@@ -4,6 +4,7 @@
 extern crate anyhow;
 
 pub mod app;
+pub mod capi;
 mod config;
 mod geometry;
 mod lidar;
