@@ -1,3 +1,5 @@
+//! Calculates total propgated uncertainty for lidar data.
+
 #[macro_use]
 extern crate anyhow;
 
