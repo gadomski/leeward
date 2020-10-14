@@ -5,13 +5,14 @@
 
 namespace pdal
 {
-    class PDAL_DLL Leeward : public Filter
+    class PDAL_DLL LeewardFilter : public Filter
     {
     public:
-        Leeward() : Filter() {}
+        LeewardFilter() : Filter() {}
 
         std::string getName() const;
 
     private:
+        virtual PointViewSet run(PointViewPtr view);
     };
 } // namespace pdal

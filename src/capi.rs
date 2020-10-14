@@ -1,4 +1,4 @@
 #[no_mangle]
-pub extern "C" fn capi_test() {
+pub extern "C" fn leeward_capi_test() {
     println!("Hello world!")
 }
