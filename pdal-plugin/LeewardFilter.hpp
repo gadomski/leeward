@@ -13,6 +13,17 @@ namespace pdal
         std::string getName() const;
 
     private:
-        virtual PointViewSet run(PointViewPtr view);
+        virtual void addDimensions(PointLayoutPtr layout);
+        virtual void addArgs(ProgramArgs &args);
+        virtual void filter(PointView &view);
+
+        std::string m_sbet_path;
+        std::string m_config_path;
+        int m_quantization;
+        Dimension::Id m_sigmaX;
+        Dimension::Id m_sigmaY;
+        Dimension::Id m_sigmaHorizontal;
+        Dimension::Id m_sigmaVertical;
+        Dimension::Id m_sigmaMagnitude;
     };
 } // namespace pdal

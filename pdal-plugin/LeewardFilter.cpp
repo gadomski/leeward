@@ -12,16 +12,52 @@ namespace pdal
 
     std::string LeewardFilter::getName() const { return s_info.name; }
 
-    PointViewSet LeewardFilter::run(PointViewPtr input)
+    void LeewardFilter::addDimensions(PointLayoutPtr layout)
     {
-        PointViewSet output;
-        output.insert(input);
-        auto leeward = leeward_new("foobar", 42);
+        this->m_sigmaX = layout->registerOrAssignDim("SigmaX", Dimension::Type::Float);
+        this->m_sigmaY = layout->registerOrAssignDim("SigmaY", Dimension::Type::Float);
+        this->m_sigmaHorizontal = layout->registerOrAssignDim("SigmaHorizontal", Dimension::Type::Float);
+        this->m_sigmaVertical = layout->registerOrAssignDim("SigmaVertical", Dimension::Type::Float);
+        this->m_sigmaMagnitude = layout->registerOrAssignDim("SigmaMagnitude", Dimension::Type::Float);
+    }
+
+    void LeewardFilter::addArgs(ProgramArgs &args)
+    {
+        args.add("sbet_path", "Path to the sbet file", this->m_sbet_path);
+        args.add("config_path", "Path to the sbet file", this->m_config_path);
+        args.add("quantization", "Increments of a second to which to quantize the trajectory", this->m_quantization, 100);
+    }
+
+    void LeewardFilter::filter(PointView &view)
+    {
+        if (this->m_sbet_path.empty())
+        {
+            throw pdal_error("No SBET path provided, exiting...");
+        }
+        if (this->m_config_path.empty())
+        {
+            throw pdal_error("No config path provided, exiting...");
+        }
+        auto leeward = leeward_new(this->m_sbet_path.c_str(), this->m_config_path.c_str(), this->m_quantization);
         if (!leeward)
         {
             throw pdal_error("Error when creating leeward, exiting...");
         }
+        for (PointId id = 0; id < view.size(); ++id)
+        {
+            auto x = view.getFieldAs<double>(Dimension::Id::X, id);
+            auto y = view.getFieldAs<double>(Dimension::Id::Y, id);
+            auto z = view.getFieldAs<double>(Dimension::Id::Z, id);
+            auto scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
+            auto gps_time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
+            auto tpu = leeward_tpu(leeward, x, y, z, scan_angle, gps_time);
+            view.setField(this->m_sigmaX, id, tpu->sigma_x);
+            view.setField(this->m_sigmaY, id, tpu->sigma_y);
+            view.setField(this->m_sigmaHorizontal, id, tpu->sigma_horizontal);
+            view.setField(this->m_sigmaVertical, id, tpu->sigma_vertical);
+            view.setField(this->m_sigmaMagnitude, id, tpu->sigma_magnitude);
+            leeward_tpu_delete(tpu);
+        }
         leeward_delete(leeward);
-        return output;
     }
 } // namespace pdal
