@@ -1,5 +1,6 @@
 use crate::lidar::Measurement;
 use crate::partials::{Dimension, Partial, Variable};
+use crate::trajectory::Trajectory;
 use crate::Config;
 use anyhow::Error;
 use csv::Writer;
@@ -33,12 +34,6 @@ pub struct BackconvertOptions {
     pub orientation: bool,
     pub platform: bool,
     pub partials: bool,
-}
-
-struct Trajectory {
-    quantanization: Option<u32>,
-    hash_map: HashMap<i64, sbet::Point>,
-    vec: Vec<sbet::Point>,
 }
 
 struct OptionalProgressBar(Option<ProgressBar>);
@@ -344,7 +339,7 @@ impl App {
         }
         progress.finish_with_message(&format!("done reading sbet {}", path.as_ref().display()));
         Ok(Trajectory {
-            quantanization: quantization,
+            quantanization: quantization, // FIXME should be a constructor
             vec: vec,
             hash_map: hash_map,
         })
@@ -401,31 +396,6 @@ impl Config {
     /// Creates a configuration from TOML in a file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
         toml::from_str(&std::fs::read_to_string(path)?).map_err(Into::into)
-    }
-}
-
-impl Trajectory {
-    fn into_iter(self) -> std::vec::IntoIter<sbet::Point> {
-        self.vec.into_iter()
-    }
-
-    fn len(&self) -> usize {
-        self.vec.len()
-    }
-
-    fn measurement(&self, las: las::Point, config: Config) -> Result<Measurement, Error> {
-        let gps_time = las
-            .gps_time
-            .ok_or_else(|| anyhow!("Missing GPSTime field on las point"))?;
-        let quantanization = self
-            .quantanization
-            .ok_or_else(|| anyhow!("Trajectory is not quantized"))?;
-        let gps_time_quantized = quantize(gps_time, quantanization);
-        let sbet = self
-            .hash_map
-            .get(&gps_time_quantized)
-            .ok_or_else(|| anyhow!("Could not find sbet point for gps time: {}", gps_time))?;
-        Ok(Measurement::new(las, *sbet, config))
     }
 }
 
@@ -521,6 +491,6 @@ impl BackconvertOptions {
     }
 }
 
-fn quantize(time: f64, level: u32) -> i64 {
+pub fn quantize(time: f64, level: u32) -> i64 {
     (time * f64::from(level)).round() as i64
 }

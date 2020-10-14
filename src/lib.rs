@@ -9,6 +9,8 @@ mod config;
 mod geometry;
 mod lidar;
 mod partials;
+mod trajectory;
 
 pub use app::App;
 pub use config::Config;
+pub use trajectory::Trajectory;

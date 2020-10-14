@@ -16,8 +16,12 @@ namespace pdal
     {
         PointViewSet output;
         output.insert(input);
-        std::cout << "hi from C" << std::endl;
-        leeward_capi_test();
+        auto leeward = leeward_new("foobar", 42);
+        if (!leeward)
+        {
+            throw pdal_error("Error when creating leeward, exiting...");
+        }
+        leeward_delete(leeward);
         return output;
     }
 } // namespace pdal
