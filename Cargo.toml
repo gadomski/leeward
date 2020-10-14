@@ -1,0 +1,20 @@
+[package]
+name = "leeward"
+version = "0.1.0"
+authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+approx = "*"
+anyhow = "*"
+clap = { version = "2", features = ["yaml"] }
+csv = "*"
+indicatif = "*"
+las = "*"
+glob = "*"
+nalgebra = "*"
+sbet = { path = "/Users/gadomski/Code/sbet-rs" }
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "*"
+toml = "*"
+utm = "*"
