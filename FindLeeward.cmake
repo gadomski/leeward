@@ -1,5 +1,5 @@
 if(NOT DEFINED Leeward_DIR)
-    set(Leeward_DIR "" CACHE PATH "Path to the build directory for the desired profile (e.g. target/release)")
+    set(Leeward_DIR "" CACHE PATH "Path to the build directory for the desired profile (e.g. /path/to/leeward/target/release)")
 endif()
 
 find_path(Leeward_INCLUDE_DIR
