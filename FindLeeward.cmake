@@ -1,3 +1,7 @@
+if(NOT DEFINED Leeward_DIR)
+    set(Leeward_DIR "" CACHE PATH "Path to the build directory for the desired profile (e.g. target/release)")
+endif()
+
 find_path(Leeward_INCLUDE_DIR
     NAMES leeward.h
     PATHS ${Leeward_DIR}
