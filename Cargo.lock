@@ -586,6 +586,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 [[package]]
 name = "sbet"
 version = "0.1.0"
+source = "git+https://github.com/gadomski/sbet-rs.git#af5f26e997393f39cd275b3834248b08559a5bc1"
 dependencies = [
  "anyhow",
  "byteorder",

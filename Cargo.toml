@@ -17,7 +17,7 @@ las = "0.7"
 libc = "0.2"
 glob = "0.3"
 nalgebra = "0.22"
-sbet = { path = "/Users/gadomski/Code/sbet-rs" }
+sbet = { git = "https://github.com/gadomski/sbet-rs.git" }
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 toml = "0.5"
