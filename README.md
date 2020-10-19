@@ -34,7 +34,7 @@ find_package_handle_standard_args(Leeward
 if(Leeward_FOUND AND NOT TARGET Leeward::Leeward)
     add_library(Leeward::Leeward UNKNOWN IMPORTED)
     set_target_properties(Leeward::Leeward PROPERTIES
-        IMPORTED_LOCATION "${Leeward_LIBRARY}" 
+        IMPORTED_LOCATION "${Leeward_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${Leeward_INCLUDE_DIR}"
     )
 endif()

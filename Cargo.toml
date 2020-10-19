@@ -8,20 +8,20 @@ edition = "2018"
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
-approx = "*"
-anyhow = "*"
-clap = { version = "2", features = ["yaml"] }
-csv = "*"
-indicatif = "*"
-las = "*"
-libc = "*"
-glob = "*"
-nalgebra = "*"
+approx = "0.3"
+anyhow = "1.0"
+clap = { version = "2.33", features = ["yaml"] }
+csv = "1.1"
+indicatif = "0.15"
+las = "0.7"
+libc = "0.2"
+glob = "0.3"
+nalgebra = "0.22"
 sbet = { path = "/Users/gadomski/Code/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }
-serde_derive = "*"
-toml = "*"
-utm = "*"
+serde_derive = "1.0"
+toml = "0.5"
+utm = "0.1"
 
 [build-dependencies]
-cbindgen = "*"
+cbindgen = "0.15"
