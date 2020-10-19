@@ -92,9 +92,7 @@ mod test {
 
     fn check_matrix(roll: f64, pitch: f64, yaw: f64, matrix: Vec<f64>) {
         let matrix = Matrix3::from_iterator(matrix);
-        println!("{}", matrix);
         let rotation = Matrix3::from(Rotation { roll, pitch, yaw });
-        println!("{}", rotation);
         assert_relative_eq!(rotation[(0, 0)], matrix[(0, 0)]);
         assert_relative_eq!(rotation[(0, 1)], matrix[(0, 1)]);
         assert_relative_eq!(rotation[(0, 2)], matrix[(0, 2)]);
