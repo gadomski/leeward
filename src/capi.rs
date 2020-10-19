@@ -17,7 +17,7 @@ impl Leeward {
 }
 
 #[repr(C)]
-pub struct Tpu {
+pub struct LeewardTpu {
     sigma_x: f64,
     sigma_y: f64,
     sigma_horizontal: f64,
@@ -62,7 +62,7 @@ pub extern "C" fn leeward_tpu(
     z: c_double,
     scan_angle: f32,
     gps_time: f64,
-) -> *mut Tpu {
+) -> *mut LeewardTpu {
     if leeward.is_null() {
         return ptr::null_mut();
     }
@@ -84,7 +84,7 @@ pub extern "C" fn leeward_tpu(
     match leeward.measurement(point) {
         Ok(measurement) => {
             let covariance = measurement.tpu();
-            let tpu = Tpu {
+            let tpu = LeewardTpu {
                 sigma_x: covariance[(0, 0)].sqrt(),
                 sigma_y: covariance[(1, 1)].sqrt(),
                 sigma_horizontal: (covariance[(0, 0)] + covariance[(1, 1)]).sqrt(),
@@ -102,7 +102,7 @@ pub extern "C" fn leeward_tpu(
 }
 
 #[no_mangle]
-pub extern "C" fn leeward_tpu_delete(tpu: *mut Tpu) {
+pub extern "C" fn leeward_tpu_delete(tpu: *mut LeewardTpu) {
     if tpu.is_null() {
         // pass
     } else {

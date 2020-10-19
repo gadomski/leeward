@@ -22,3 +22,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_derive = "*"
 toml = "*"
 utm = "*"
+
+[build-dependencies]
+cbindgen = "*"
