@@ -4,6 +4,7 @@
 extern crate anyhow;
 
 pub mod app;
+#[cfg(feature = "capi")]
 pub mod capi;
 mod config;
 mod geometry;
