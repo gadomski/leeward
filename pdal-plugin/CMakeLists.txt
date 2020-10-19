@@ -21,3 +21,5 @@ add_library(pdal_plugin_filter_leeward SHARED LeewardFilter.cpp)
 target_link_libraries(pdal_plugin_filter_leeward PRIVATE ${PDAL_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/libleeward.a)
 target_include_directories(pdal_plugin_filter_leeward PRIVATE ${CMAKE_BINARY_DIR})
 add_dependencies(pdal_plugin_filter_leeward leeward)
+
+install(TARGETS pdal_plugin_filter_leeward)
