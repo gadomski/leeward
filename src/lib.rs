@@ -51,6 +51,44 @@
 //! # let point = reader.points().next().unwrap().unwrap();
 //! let measurement = quantized_trajectory.measurement(point, config).unwrap();
 //! ```
+//!
+//! # Step 3: Calculate the total propogated uncertainty (TPU)
+//!
+//! Getting the TPU covariance matrix for a measurement is easy:
+//!
+//! ```
+//! # use leeward::Trajectory;
+//! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+//! # let quantized_trajectory = trajectory.quantize(100);
+//! # use leeward::Config;
+//! # let config = Config::from_path("examples/config.toml").unwrap();
+//! # use las::{Reader, Read};
+//! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
+//! # let point = reader.points().next().unwrap().unwrap();
+//! # let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! let covariance = measurement.tpu();
+//! ```
+//!
+//! The diagonal of the covariance matrix is the x, y, and z variances respectively.
+//! To get uncertainty in terms of standard deviation, take the appropriate square root:
+//!
+//! ```
+//! # use leeward::Trajectory;
+//! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+//! # let quantized_trajectory = trajectory.quantize(100);
+//! # use leeward::Config;
+//! # let config = Config::from_path("examples/config.toml").unwrap();
+//! # use las::{Reader, Read};
+//! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
+//! # let point = reader.points().next().unwrap().unwrap();
+//! # let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! # let covariance = measurement.tpu();
+//! let sigma_x = covariance[(0, 0)].sqrt();
+//! let sigma_y = covariance[(1, 1)].sqrt();
+//! let sigma_horizontal = (covariance[(0, 0)] + covariance[(1, 1)]).sqrt();
+//! let sigma_z = covariance[(2, 2)].sqrt();
+//! let sigma_magnitude = (covariance[(0, 0)] + covariance[(1, 1)] + covariance[(2, 2)]).sqrt();
+//! ```
 
 pub mod app;
 #[cfg(feature = "capi")]
