@@ -12,6 +12,18 @@ pub struct Trajectory {
 }
 
 impl Trajectory {
+    /// Reads a trajectory from an sbet file at the provided path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::Trajectory;
+    /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+    /// ```
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Trajectory, Error> {
+        Trajectory::new(path, None)
+    }
+
     pub fn new<P: AsRef<Path>>(path: P, quantization: Option<u32>) -> Result<Trajectory, Error> {
         let reader = sbet::Reader::from_path(path.as_ref())?;
         let mut vec = vec![];
