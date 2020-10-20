@@ -1,6 +1,6 @@
 use crate::lidar::Measurement;
 use crate::Config;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use std::collections::HashMap;
 use std::path::Path;
 

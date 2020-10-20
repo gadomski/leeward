@@ -2,7 +2,7 @@ use crate::lidar::Measurement;
 use crate::partials::{Dimension, Partial, Variable};
 use crate::trajectory::Trajectory;
 use crate::Config;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use csv::Writer;
 use indicatif::ProgressBar;
 use las::Read;

@@ -1,6 +1,6 @@
 use crate::geometry::{Rotation, Vector};
 use crate::partials::Variable;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use serde::Deserialize;
 
 /// A lidar equation configuration.
