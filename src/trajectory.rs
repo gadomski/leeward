@@ -1,5 +1,5 @@
 use crate::{Config, Measurement};
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use sbet::Point;
 use std::collections::HashMap;
 use std::path::Path;
@@ -49,7 +49,7 @@ impl Trajectory {
     /// ```
     /// use leeward::Trajectory;
     /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-    /// assert_eq!(trajectory.len(), 2);
+    /// assert_eq!(trajectory.len(), 200);
     /// ```
     pub fn len(&self) -> usize {
         self.0.len()
@@ -57,7 +57,7 @@ impl Trajectory {
 
     /// Quantizes this trajectory to the provided level.
     ///
-    /// E.g. a level of 100 means that the trajectory will be quantized to every 10 millisecond.
+    /// E.g. a level of 100 means that the trajectory will be quantized to every 10 milliseconds.
     ///
     /// ```
     /// use leeward::Trajectory;
@@ -83,8 +83,28 @@ impl From<Vec<Point>> for Trajectory {
 }
 
 impl QuantizedTrajectory {
+    /// Create a measurement that can be used to calculate TPU.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::Trajectory;
+    /// let trajectory: Trajectory = vec![sbet::Point { time: 42.0, ..Default::default() }].into();
+    /// ```
     pub fn measurement(&self, las: las::Point, config: Config) -> Result<Measurement, Error> {
-        unimplemented!()
+        let time = las
+            .gps_time
+            .ok_or_else(|| anyhow!("Missing GPSTime on las point"))?;
+        let quantized_time = self.quantize(time);
+        let sbet = self
+            .points
+            .get(&quantized_time)
+            .ok_or_else(|| anyhow!("Could not find SBET point for time {}", time))?;
+        Ok(Measurement::new(las, *sbet, config))
+    }
+
+    fn quantize(&self, time: f64) -> i64 {
+        quantize(time, self.level)
     }
 }
 

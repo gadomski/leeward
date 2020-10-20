@@ -19,6 +19,38 @@
 //! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
 //! let quantized_trajectory = trajectory.quantize(100);
 //! ```
+//!
+//! # Step 2: Create a measurement
+//!
+//! A `Measurement` is a combination of a trajectory point, a lidar point, and platform configuration.
+//! The configuration can be read from a toml file:
+//!
+//! ```
+//! use leeward::Config;
+//! let config = Config::from_path("examples/config.toml").unwrap();
+//! ```
+//!
+//! The lidar point can be read from a las file:
+//!
+//! ```
+//! use las::{Reader, Read};
+//! let mut reader = Reader::from_path("examples/one-point.las").unwrap();
+//! let point = reader.points().next().unwrap().unwrap();
+//! ```
+//!
+//! The quantized trajectory is then used to create the measurement:
+//!
+//! ```
+//! # use leeward::Trajectory;
+//! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+//! # let quantized_trajectory = trajectory.quantize(100);
+//! # use leeward::Config;
+//! # let config = Config::from_path("examples/config.toml").unwrap();
+//! # use las::{Reader, Read};
+//! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
+//! # let point = reader.points().next().unwrap().unwrap();
+//! let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! ```
 
 pub mod app;
 #[cfg(feature = "capi")]
