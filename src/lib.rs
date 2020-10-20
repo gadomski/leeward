@@ -1,4 +1,4 @@
-//! Calculates total propgated uncertainty for lidar data.
+//! Calculates total propgated uncertainty (TPU) for lidar data.
 //!
 //! # Step 1: Import a trajectory
 //!
@@ -8,6 +8,16 @@
 //! ```
 //! use leeward::Trajectory;
 //! let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+//! ```
+//!
+//! To use a trajectory for TPU, it must be quantized.
+//! This means converting the vector of trajectory points into a hash map, using an integer mapping of the point times as the hash map keys and the points themselves as values.
+//! The integer mapping of the keys is, by default, converting the times to centiseconds (10 milliseconds) and rounding to the nearest integer.
+//!
+//! ```
+//! # use leeward::Trajectory;
+//! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+//! let quantized_trajectory = trajectory.quantize(100);
 //! ```
 
 pub mod app;
@@ -21,4 +31,5 @@ mod trajectory;
 
 pub use app::App;
 pub use config::Config;
-pub use trajectory::Trajectory;
+pub use lidar::Measurement;
+pub use trajectory::{QuantizedTrajectory, Trajectory};

@@ -1,5 +1,4 @@
-use crate::lidar::Measurement;
-use crate::{Config, Trajectory};
+use crate::{Config, Measurement, QuantizedTrajectory, Trajectory};
 use anyhow::Error;
 use libc::{c_char, c_double};
 use std::ffi::CStr;
@@ -7,7 +6,7 @@ use std::ptr;
 
 pub struct Leeward {
     config: Config,
-    trajectory: Trajectory,
+    trajectory: QuantizedTrajectory,
 }
 
 impl Leeward {
@@ -32,14 +31,13 @@ pub extern "C" fn leeward_new(
     quantization: u32,
 ) -> *mut Leeward {
     let sbet_path = unsafe { CStr::from_ptr(sbet_path) };
-    let trajectory =
-        match Trajectory::new(sbet_path.to_string_lossy().into_owned(), Some(quantization)) {
-            Ok(trajectory) => trajectory,
-            Err(err) => {
-                eprintln!("{}", err);
-                return ptr::null_mut();
-            }
-        };
+    let trajectory = match Trajectory::from_path(sbet_path.to_string_lossy().into_owned()) {
+        Ok(trajectory) => trajectory.quantize(quantization),
+        Err(err) => {
+            eprintln!("{}", err);
+            return ptr::null_mut();
+        }
+    };
     let config_path = unsafe { CStr::from_ptr(config_path) };
     let config = match Config::from_path(config_path.to_string_lossy().into_owned()) {
         Ok(config) => config,

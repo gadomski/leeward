@@ -1,13 +1,10 @@
-use crate::lidar::Measurement;
 use crate::partials::{Dimension, Partial, Variable};
-use crate::trajectory::Trajectory;
-use crate::Config;
+use crate::{Config, Measurement, Trajectory};
 use anyhow::{anyhow, Error};
 use csv::Writer;
 use indicatif::ProgressBar;
 use las::Read;
 use nalgebra::{DMatrix, DVector};
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -63,7 +60,7 @@ impl App {
         outfile: P1,
         decimation: usize,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, None)?;
+        let trajectory = self.read_trajectory(trajectory)?;
         let progress = self.optional_progress_bar((trajectory.len() / decimation) as u64);
         progress.set_message(&format!("writing csv {}", outfile.as_ref().display()));
         let mut file = File::create(&outfile)?;
@@ -97,7 +94,7 @@ impl App {
         quantization: u32,
         all: bool,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
+        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -153,7 +150,7 @@ impl App {
         decimation: usize,
         quantization: u32,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
+        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -188,7 +185,7 @@ impl App {
         decimation: usize,
         quantization: u32,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
+        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -260,7 +257,7 @@ impl App {
         index: usize,
         quantization: u32,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
+        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let point = reader
             .points()
@@ -283,7 +280,7 @@ impl App {
         quantization: u32,
         delta: f64,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
+        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let mut outfile = File::create(outfile)?;
         write!(outfile, "X,Y,Z")?;
@@ -318,31 +315,18 @@ impl App {
         Ok(())
     }
 
-    fn read_trajectory<P: AsRef<Path>>(
-        &self,
-        path: P,
-        quantization: Option<u32>,
-    ) -> Result<Trajectory, Error> {
+    fn read_trajectory<P: AsRef<Path>>(&self, path: P) -> Result<Trajectory, Error> {
         let reader = sbet::Reader::from_path(path.as_ref())?;
         let mut vec = vec![];
-        let mut hash_map = HashMap::new();
         let progress = self.optional_progress_bar(sbet::estimate_number_of_points(path.as_ref())?);
         progress.set_message(&format!("reading sbet {}", path.as_ref().display()));
         for result in reader {
             let point = result?;
-            if let Some(quantization) = quantization {
-                let time = quantize(point.time, quantization);
-                hash_map.insert(time, point.clone());
-            }
             vec.push(point);
             progress.inc(1);
         }
         progress.finish_with_message(&format!("done reading sbet {}", path.as_ref().display()));
-        Ok(Trajectory {
-            quantanization: quantization, // FIXME should be a constructor
-            vec: vec,
-            hash_map: hash_map,
-        })
+        Ok(vec.into())
     }
 
     fn optional_progress_bar(&self, len: u64) -> OptionalProgressBar {
@@ -489,8 +473,4 @@ impl BackconvertOptions {
         }
         Ok(record)
     }
-}
-
-pub fn quantize(time: f64, level: u32) -> i64 {
-    (time * f64::from(level)).round() as i64
 }

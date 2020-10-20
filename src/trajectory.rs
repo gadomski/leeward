@@ -1,14 +1,16 @@
-use crate::lidar::Measurement;
-use crate::Config;
-use anyhow::{anyhow, Error};
+use crate::{Config, Measurement};
+use anyhow::Error;
+use sbet::Point;
 use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug)]
-pub struct Trajectory {
-    pub quantanization: Option<u32>,
-    pub hash_map: HashMap<i64, sbet::Point>,
-    pub vec: Vec<sbet::Point>,
+pub struct Trajectory(Vec<Point>);
+
+#[derive(Debug)]
+pub struct QuantizedTrajectory {
+    points: HashMap<i64, Point>,
+    level: u32,
 }
 
 impl Trajectory {
@@ -21,49 +23,68 @@ impl Trajectory {
     /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Trajectory, Error> {
-        Trajectory::new(path, None)
-    }
-
-    pub fn new<P: AsRef<Path>>(path: P, quantization: Option<u32>) -> Result<Trajectory, Error> {
         let reader = sbet::Reader::from_path(path.as_ref())?;
-        let mut vec = vec![];
-        let mut hash_map = HashMap::new();
-        for result in reader {
-            let point = result?;
-            if let Some(quantization) = quantization {
-                let time = quantize(point.time, quantization);
-                hash_map.insert(time, point.clone());
-            }
-            vec.push(point);
-        }
-        Ok(Trajectory {
-            quantanization: quantization,
-            vec: vec,
-            hash_map: hash_map,
-        })
+        let vec = reader.into_iter().collect::<Result<Vec<Point>, _>>()?;
+        Ok(Trajectory(vec))
     }
 
+    /// Converts this trajectory into an interator of its points.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::Trajectory;
+    /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+    /// let points: Vec<sbet::Point> = trajectory.into_iter().collect();
+    /// ```
     pub fn into_iter(self) -> std::vec::IntoIter<sbet::Point> {
-        self.vec.into_iter()
+        self.0.into_iter()
     }
 
+    /// Returns the length of this trajectory in number of points.
+    /// Converts this trajectory into an interator of its points.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::Trajectory;
+    /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+    /// assert_eq!(trajectory.len(), 2);
+    /// ```
     pub fn len(&self) -> usize {
-        self.vec.len()
+        self.0.len()
     }
 
+    /// Quantizes this trajectory to the provided level.
+    ///
+    /// E.g. a level of 100 means that the trajectory will be quantized to every 10 millisecond.
+    ///
+    /// ```
+    /// use leeward::Trajectory;
+    /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+    /// let quantized_trajectory = trajectory.quantize(100);
+    /// ```
+    pub fn quantize(self, level: u32) -> QuantizedTrajectory {
+        let mut points = HashMap::new();
+        for point in self.into_iter() {
+            points.insert(quantize(point.time, level), point);
+        }
+        QuantizedTrajectory {
+            points: points,
+            level: level,
+        }
+    }
+}
+
+impl From<Vec<Point>> for Trajectory {
+    fn from(vec: Vec<Point>) -> Trajectory {
+        Trajectory(vec)
+    }
+}
+
+impl QuantizedTrajectory {
     pub fn measurement(&self, las: las::Point, config: Config) -> Result<Measurement, Error> {
-        let gps_time = las
-            .gps_time
-            .ok_or_else(|| anyhow!("Missing GPSTime field on las point"))?;
-        let quantanization = self
-            .quantanization
-            .ok_or_else(|| anyhow!("Trajectory is not quantized"))?;
-        let gps_time_quantized = crate::trajectory::quantize(gps_time, quantanization); // FIXME hack
-        let sbet = self
-            .hash_map
-            .get(&gps_time_quantized)
-            .ok_or_else(|| anyhow!("Could not find sbet point for gps time: {}", gps_time))?;
-        Ok(Measurement::new(las, *sbet, config))
+        unimplemented!()
     }
 }
 
