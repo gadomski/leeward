@@ -10,16 +10,6 @@
 //! let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
 //! ```
 //!
-//! To use a trajectory for TPU, it must be quantized.
-//! This means converting the vector of trajectory points into a hash map, using an integer mapping of the point times as the hash map keys and the points themselves as values.
-//! The integer mapping of the keys is, by default, converting the times to centiseconds (10 milliseconds) and rounding to the nearest integer.
-//!
-//! ```
-//! # use leeward::Trajectory;
-//! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-//! let quantized_trajectory = trajectory.quantize(100);
-//! ```
-//!
 //! # Step 2: Create a measurement
 //!
 //! A `Measurement` is a combination of a trajectory point, a lidar point, and platform configuration.
@@ -38,18 +28,17 @@
 //! let point = reader.points().next().unwrap().unwrap();
 //! ```
 //!
-//! The quantized trajectory is then used to create the measurement:
+//! The trajectory is then used to create the measurement:
 //!
 //! ```
 //! # use leeward::Trajectory;
 //! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-//! # let quantized_trajectory = trajectory.quantize(100);
 //! # use leeward::Config;
 //! # let config = Config::from_path("examples/config.toml").unwrap();
 //! # use las::{Reader, Read};
 //! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
 //! # let point = reader.points().next().unwrap().unwrap();
-//! let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! let measurement = trajectory.measurement(point, config).unwrap();
 //! ```
 //!
 //! # Step 3: Calculate the total propagated uncertainty (TPU)
@@ -59,13 +48,12 @@
 //! ```
 //! # use leeward::Trajectory;
 //! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-//! # let quantized_trajectory = trajectory.quantize(100);
 //! # use leeward::Config;
 //! # let config = Config::from_path("examples/config.toml").unwrap();
 //! # use las::{Reader, Read};
 //! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
 //! # let point = reader.points().next().unwrap().unwrap();
-//! # let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! # let measurement = trajectory.measurement(point, config).unwrap();
 //! let covariance = measurement.tpu();
 //! ```
 //!
@@ -75,13 +63,12 @@
 //! ```
 //! # use leeward::Trajectory;
 //! # let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-//! # let quantized_trajectory = trajectory.quantize(100);
 //! # use leeward::Config;
 //! # let config = Config::from_path("examples/config.toml").unwrap();
 //! # use las::{Reader, Read};
 //! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
 //! # let point = reader.points().next().unwrap().unwrap();
-//! # let measurement = quantized_trajectory.measurement(point, config).unwrap();
+//! # let measurement = trajectory.measurement(point, config).unwrap();
 //! # let covariance = measurement.tpu();
 //! let sigma_x = covariance[(0, 0)].sqrt();
 //! let sigma_y = covariance[(1, 1)].sqrt();
@@ -102,4 +89,4 @@ mod trajectory;
 pub use app::App;
 pub use config::Config;
 pub use lidar::Measurement;
-pub use trajectory::{QuantizedTrajectory, Trajectory};
+pub use trajectory::Trajectory;

@@ -1,4 +1,4 @@
-use crate::{Config, Measurement, QuantizedTrajectory, Trajectory};
+use crate::{Config, Measurement, Trajectory};
 use anyhow::Error;
 use libc::{c_char, c_double};
 use std::ffi::CStr;
@@ -6,7 +6,7 @@ use std::ptr;
 
 pub struct Leeward {
     config: Config,
-    trajectory: QuantizedTrajectory,
+    trajectory: Trajectory,
 }
 
 impl Leeward {
@@ -28,11 +28,14 @@ pub struct LeewardTpu {
 pub extern "C" fn leeward_new(
     sbet_path: *const c_char,
     config_path: *const c_char,
-    quantization: u32,
+    level: f64,
 ) -> *mut Leeward {
     let sbet_path = unsafe { CStr::from_ptr(sbet_path) };
     let trajectory = match Trajectory::from_path(sbet_path.to_string_lossy().into_owned()) {
-        Ok(trajectory) => trajectory.quantize(quantization),
+        Ok(mut trajectory) => {
+            trajectory.rebuild_index(level);
+            trajectory
+        }
         Err(err) => {
             eprintln!("{}", err);
             return ptr::null_mut();

@@ -4,7 +4,7 @@ use anyhow::{anyhow, Error};
 use serde::Deserialize;
 
 /// A lidar equation configuration.
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Default)]
 pub struct Config {
     pub utm_zone: u8,
     pub lever_arm: Vector,

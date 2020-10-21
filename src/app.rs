@@ -60,7 +60,7 @@ impl App {
         outfile: P1,
         decimation: usize,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?;
+        let trajectory = self.read_trajectory(trajectory, None)?;
         let progress = self.optional_progress_bar((trajectory.len() / decimation) as u64);
         progress.set_message(&format!("writing csv {}", outfile.as_ref().display()));
         let mut file = File::create(&outfile)?;
@@ -91,10 +91,10 @@ impl App {
         config: Config,
         outfile: P2,
         decimation: usize,
-        quantization: u32,
+        quantization: f64,
         all: bool,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
+        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -148,9 +148,9 @@ impl App {
         options: BackconvertOptions,
         outfile: P2,
         decimation: usize,
-        quantization: u32,
+        quantization: f64,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
+        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -183,9 +183,9 @@ impl App {
         lasfile: P1,
         config: Config,
         decimation: usize,
-        quantization: u32,
+        quantization: f64,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
+        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let progress =
             self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
@@ -255,9 +255,9 @@ impl App {
         lasfile: P1,
         config: Config,
         index: usize,
-        quantization: u32,
+        quantization: f64,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
+        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let point = reader
             .points()
@@ -277,10 +277,10 @@ impl App {
         config: Config,
         outfile: P2,
         decimation: usize,
-        quantization: u32,
+        quantization: f64,
         delta: f64,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?.quantize(quantization);
+        let trajectory = self.read_trajectory(trajectory, Some(quantization))?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
         let mut outfile = File::create(outfile)?;
         write!(outfile, "X,Y,Z")?;
@@ -315,7 +315,11 @@ impl App {
         Ok(())
     }
 
-    fn read_trajectory<P: AsRef<Path>>(&self, path: P) -> Result<Trajectory, Error> {
+    fn read_trajectory<P: AsRef<Path>>(
+        &self,
+        path: P,
+        level: Option<f64>,
+    ) -> Result<Trajectory, Error> {
         let reader = sbet::Reader::from_path(path.as_ref())?;
         let mut vec = vec![];
         let progress = self.optional_progress_bar(sbet::estimate_number_of_points(path.as_ref())?);
@@ -326,7 +330,7 @@ impl App {
             progress.inc(1);
         }
         progress.finish_with_message(&format!("done reading sbet {}", path.as_ref().display()));
-        Ok(vec.into())
+        Ok(Trajectory::new(vec, level))
     }
 
     fn optional_progress_bar(&self, len: u64) -> OptionalProgressBar {
