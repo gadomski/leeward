@@ -1,4 +1,4 @@
-//! Calculates total propgated uncertainty (TPU) for lidar data.
+//! Calculates total propagated uncertainty (TPU) for lidar data.
 //!
 //! # Step 1: Import a trajectory
 //!
@@ -52,7 +52,7 @@
 //! let measurement = quantized_trajectory.measurement(point, config).unwrap();
 //! ```
 //!
-//! # Step 3: Calculate the total propogated uncertainty (TPU)
+//! # Step 3: Calculate the total propagated uncertainty (TPU)
 //!
 //! Getting the TPU covariance matrix for a measurement is easy:
 //!
