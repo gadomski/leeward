@@ -92,16 +92,25 @@ impl Trajectory {
         let time = las
             .gps_time
             .ok_or_else(|| anyhow!("Missing GPSTime on las point"))?;
-        let quantized_time = self.quantize(time);
-        let index = self
-            .index
-            .get(&quantized_time)
-            .ok_or_else(|| anyhow!("Could not find SBET point for time {}", time))?;
         let sbet = self
-            .points
-            .get(*index)
-            .ok_or_else(|| anyhow!("Invalid index, no sbet point for index value {}", index))?;
+            .point(time)
+            .ok_or_else(|| anyhow!("Could not find sbet point for time: {}", time))?;
         Ok(Measurement::new(las, *sbet, config))
+    }
+
+    /// Returns the sbet point for the provided time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let trajectory = leeward::Trajectory::from_path("examples/sbet.out").unwrap();
+    /// let point = trajectory.point(400824.9102).unwrap();
+    /// ```
+    pub fn point(&self, time: f64) -> Option<&Point> {
+        let quantized_time = self.quantize(time);
+        self.index
+            .get(&quantized_time)
+            .and_then(|index| self.points.get(*index))
     }
 
     fn quantize(&self, time: f64) -> i64 {

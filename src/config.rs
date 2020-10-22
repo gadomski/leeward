@@ -6,8 +6,13 @@ use std::path::Path;
 /// A lidar equation configuration.
 #[derive(Clone, Copy, Debug, Deserialize, Default)]
 pub struct Config {
+    /// The UTM zone in which to do the calculations.
     pub utm_zone: u8,
+
+    /// The offset between the scanner origin and the IMU origin.
     pub lever_arm: Vector,
+
+    /// The rotational misalignment between the IMU and the frame of the aircraft.
     pub boresight: Rotation,
 }
 

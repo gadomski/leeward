@@ -28,6 +28,20 @@ pub struct PartialCheck {
 }
 
 impl Measurement {
+    /// Creates a new measurement from a las point, an sbet point, and a configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::{Trajectory, Config, Measurement};
+    /// use las::Read;
+    ///
+    /// let trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
+    /// let las = las::Reader::from_path("examples/one-point.las").unwrap().points().next().unwrap().unwrap();
+    /// let sbet = trajectory.point(las.gps_time.unwrap()).unwrap();
+    /// let config = Config::from_path("examples/config.toml").unwrap();
+    /// let measurement = Measurement::new(las, *sbet, config);
+    /// ```
     pub fn new(las: las::Point, sbet: sbet::Point, config: Config) -> Measurement {
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
@@ -64,14 +78,17 @@ impl Measurement {
         }
     }
 
+    /// Returns the range from the plane to the las point.
     pub fn range(&self) -> f64 {
         self.range
     }
 
+    /// Returns the IMU's roll, pitch, and yaw.
     pub fn imu(&self) -> Rotation {
         self.imu
     }
 
+    /// Returns the IMU's GNSS point.
     pub fn gnss(&self) -> Point {
         self.gnss
     }
@@ -290,6 +307,7 @@ impl Measurement {
         }
     }
 
+    // TODO move this to the partials module.
     pub fn partial_check(&self, partial: Partial, delta: f64) -> PartialCheck {
         let expected = self.value(partial.0) + delta;
         let partial_value = self.partial(partial);

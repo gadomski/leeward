@@ -22,6 +22,7 @@ pub struct App {
 ///
 /// We might want to turn these on or off at the command line to test stuff.
 #[derive(Debug)]
+#[allow(missing_docs)]
 pub struct BackconvertOptions {
     pub original: bool,
     pub vector: bool,

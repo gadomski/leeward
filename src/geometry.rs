@@ -5,15 +5,18 @@ use std::vec::IntoIter;
 
 /// A three dimensional vector.
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[allow(missing_docs)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
+/// A point is just a vector by another name.
 pub type Point = Vector;
 
 /// A three dimensional rotation.
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[allow(missing_docs)]
 pub struct Rotation {
     pub roll: f64,
     pub pitch: f64,

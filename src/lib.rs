@@ -77,6 +77,8 @@
 //! let sigma_magnitude = (covariance[(0, 0)] + covariance[(1, 1)] + covariance[(2, 2)]).sqrt();
 //! ```
 
+#![warn(missing_docs)]
+
 pub mod app;
 #[cfg(feature = "capi")]
 pub mod capi;
@@ -87,5 +89,6 @@ mod partials;
 mod trajectory;
 
 pub use config::Config;
+pub use geometry::{Point, Rotation, Vector};
 pub use lidar::Measurement;
 pub use trajectory::Trajectory;
