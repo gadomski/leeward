@@ -307,7 +307,7 @@ impl Measurement {
         }
     }
 
-    // TODO move this to the partials module.
+    /// Returns the results of comparing the expected and actual partial.
     pub fn partial_check(&self, partial: Partial, delta: f64) -> PartialCheck {
         let expected = self.value(partial.0) + delta;
         let partial_value = self.partial(partial);
