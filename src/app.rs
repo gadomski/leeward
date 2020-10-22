@@ -43,18 +43,32 @@ impl App {
     /// # Examples
     ///
     /// ```
-    /// let app = leeward::App::new();
+    /// let app = leeward::app::App::new();
     /// ```
     pub fn new() -> App {
         App::default()
     }
 
     /// If quiet, no progress reporting. Otherwise, report progress.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut app = leeward::app::App::new();
+    /// app.quiet(true);
+    /// ```
     pub fn quiet(&mut self, quiet: bool) {
         self.quiet = quiet;
     }
 
     /// Projects a trajectory into UTM coordinates.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let app = leeward::app::App::new();
+    /// app.project_trajectory("examples/sbet.out", 11, "examples/sbet-projected.csv", 100).unwrap();
+    /// ```
     pub fn project_trajectory<P0: AsRef<Path>, P1: AsRef<Path>>(
         &self,
         trajectory: P0,
@@ -86,6 +100,15 @@ impl App {
         Ok(())
     }
 
+    /// Calculates TPU for a dataset and writes the results to a csv file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let app = leeward::app::App::new();
+    /// let config = leeward::Config::from_path("examples/config.toml").unwrap();
+    /// app.tpu("examples/sbet.out", "examples/one-point.las", config, "examples/tpu.csv", 100);
+    /// ```
     pub fn tpu<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
         &self,
         trajectory: P0,
@@ -93,7 +116,6 @@ impl App {
         config: Config,
         outfile: P2,
         decimation: usize,
-        all: bool,
     ) -> Result<(), Error> {
         let trajectory = self.read_trajectory(trajectory)?;
         let mut reader = las::Reader::from_path(lasfile.as_ref())?;
@@ -104,17 +126,13 @@ impl App {
             lasfile.as_ref().display()
         ));
         let mut outfile = File::create(outfile)?;
-        write!(outfile, "X,Y,Z,sigmaX,sigmaY,sigmaHorizontal,sigmaVertical")?;
-        if all {
-            unimplemented!()
-        }
-        writeln!(outfile, "")?;
+        writeln!(outfile, "X,Y,Z,sigmaX,sigmaY,sigmaHorizontal,sigmaVertical")?;
         for result in reader.points().step_by(decimation) {
             let point = result?;
             let measurement = trajectory.measurement(point, config)?;
             let covariance = measurement.tpu();
             let point = measurement.las_point();
-            write!(
+            writeln!(
                 outfile,
                 "{},{},{},{},{},{},{}",
                 point.x,
@@ -125,10 +143,6 @@ impl App {
                 (covariance[(0, 0)] + covariance[(1, 1)]).sqrt(),
                 covariance[(2, 2)].sqrt(),
             )?;
-            if all {
-                unimplemented!()
-            }
-            writeln!(outfile, "")?;
             progress.inc(1);
         }
         progress.finish_with_message(&format!(

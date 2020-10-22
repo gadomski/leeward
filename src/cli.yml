@@ -50,10 +50,6 @@ subcommands:
                 long: decimation
                 takes_value: true
                 help: The amount to decimate the output points
-            - all:
-                long: all
-                short: a
-                help: Print all components of the tpu 
     - backconvert:
         about: Recalculates the point cloud using the lidar equation and the provided boresight and lever arm configuration
         args:

@@ -26,7 +26,6 @@ fn main() -> Result<(), Error> {
             Config::from_path(m.value_of("CONFIG").unwrap())?,
             m.value_of("OUTFILE").unwrap(),
             m.value_of("decimation").unwrap_or("1").parse()?,
-            m.is_present("all"),
         )?;
     } else if let Some(m) = matches.subcommand_matches("backconvert") {
         let backconverter = BackconvertOptions {
