@@ -41,8 +41,12 @@ impl Trajectory {
     /// ```
     pub fn new(points: Vec<Point>, level: Option<f64>) -> Trajectory {
         let level = level.unwrap_or_else(|| calculate_level(&points));
+        let mut index = HashMap::new();
+        for (i, point) in points.iter().enumerate() {
+            index.insert(quantize(point.time, level), i);
+        }
         Trajectory {
-            index: build_index(&points, level),
+            index: index,
             level: level,
             points: points,
         }
@@ -100,20 +104,6 @@ impl Trajectory {
         Ok(Measurement::new(las, *sbet, config))
     }
 
-    /// Rebuilds the index with the given quantization level.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::Trajectory;
-    /// let mut trajectory = Trajectory::from_path("examples/sbet.out").unwrap();
-    /// trajectory.rebuild_index(100.0);
-    /// ```
-    pub fn rebuild_index(&mut self, level: f64) {
-        self.index = build_index(&self.points, level);
-        self.level = level;
-    }
-
     fn quantize(&self, time: f64) -> i64 {
         quantize(time, self.level)
     }
@@ -127,14 +117,6 @@ impl From<Vec<Point>> for Trajectory {
 
 fn quantize(time: f64, level: f64) -> i64 {
     (time * level).round() as i64
-}
-
-fn build_index(points: &[Point], level: f64) -> HashMap<i64, usize> {
-    let mut index = HashMap::new();
-    for (i, point) in points.iter().enumerate() {
-        index.insert(quantize(point.time, level), i);
-    }
-    index
 }
 
 fn calculate_level(points: &[Point]) -> f64 {

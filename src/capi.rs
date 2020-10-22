@@ -28,14 +28,10 @@ pub struct LeewardTpu {
 pub extern "C" fn leeward_new(
     sbet_path: *const c_char,
     config_path: *const c_char,
-    level: f64,
 ) -> *mut Leeward {
     let sbet_path = unsafe { CStr::from_ptr(sbet_path) };
     let trajectory = match Trajectory::from_path(sbet_path.to_string_lossy().into_owned()) {
-        Ok(mut trajectory) => {
-            trajectory.rebuild_index(level);
-            trajectory
-        }
+        Ok(trajectory) => trajectory,
         Err(err) => {
             eprintln!("{}", err);
             return ptr::null_mut();
