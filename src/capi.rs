@@ -25,6 +25,7 @@ use libc::{c_char, c_double};
 use std::ffi::CStr;
 use std::ptr;
 
+/// An opaque structure for computing TPU from C.
 pub struct Leeward {
     config: Config,
     trajectory: Trajectory,
@@ -37,6 +38,8 @@ impl Leeward {
 }
 
 #[repr(C)]
+#[allow(missing_docs)]
+/// A collection of the TPU uncertainties, as standard deviations (not variances).
 pub struct LeewardTpu {
     pub sigma_x: f64,
     pub sigma_y: f64,
@@ -45,6 +48,35 @@ pub struct LeewardTpu {
     pub sigma_magnitude: f64,
 }
 
+/// Create a new `leeward::capi::Leeward` opaque structure.
+///
+/// Returns null if it cannot be created.
+///
+/// # Examples
+///
+/// Make sure to clean up after yourself:
+///
+/// ```
+/// use std::ffi::CString;
+/// use leeward::capi;
+///
+/// let sbet_path = CString::new("examples/sbet.out").unwrap();
+/// let config_path = CString::new("examples/config.toml").unwrap();
+/// let leeward = capi::leeward_new(sbet_path.as_ptr(), config_path.as_ptr());
+/// assert!(!leeward.is_null());
+/// capi::leeward_delete(leeward);
+/// ```
+///
+/// An error means we return a null pointer, no need to clean up:
+///
+/// ```
+/// # use std::ffi::CString;
+/// # use leeward::capi;
+/// let sbet_path = CString::new("this/dosnt/exist").unwrap();
+/// # let config_path = CString::new("examples/config.toml").unwrap();
+/// let leeward = capi::leeward_new(sbet_path.as_ptr(), config_path.as_ptr());
+/// assert!(leeward.is_null());
+/// ```
 #[no_mangle]
 pub extern "C" fn leeward_new(
     sbet_path: *const c_char,
@@ -72,6 +104,7 @@ pub extern "C" fn leeward_new(
     }))
 }
 
+/// Returns the TPU for a given las point.
 #[no_mangle]
 pub extern "C" fn leeward_tpu(
     leeward: *mut Leeward,
@@ -119,6 +152,7 @@ pub extern "C" fn leeward_tpu(
     }
 }
 
+/// Deletes a TPU structure.
 #[no_mangle]
 pub extern "C" fn leeward_tpu_delete(tpu: *mut LeewardTpu) {
     if tpu.is_null() {
@@ -128,6 +162,7 @@ pub extern "C" fn leeward_tpu_delete(tpu: *mut LeewardTpu) {
     }
 }
 
+/// Deletes a leeward structure.
 #[no_mangle]
 pub extern "C" fn leeward_delete(leeward: *mut Leeward) {
     if leeward.is_null() {

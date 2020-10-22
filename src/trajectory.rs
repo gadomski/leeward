@@ -4,6 +4,7 @@ use sbet::Point;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// An indexed SBET trajectory.
 #[derive(Debug)]
 pub struct Trajectory {
     points: Vec<Point>,

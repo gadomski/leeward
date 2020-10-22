@@ -354,6 +354,7 @@ impl Measurement {
         }
     }
 
+    /// Returns the total propogated uncertainty as a covariance matrix.
     pub fn tpu(&self) -> Matrix3<f64> {
         let mut a = MatrixMN::<f64, U3, U14>::zeros();
         let mut error_covariance = MatrixMN::<f64, U14, U14>::zeros();
@@ -366,6 +367,7 @@ impl Measurement {
         a * error_covariance * a.transpose()
     }
 
+    /// Returns the uncertainty for the assocaited variable.
     pub fn error(&self, variable: Variable) -> f64 {
         match variable {
             Variable::GnssX => 0.02,
