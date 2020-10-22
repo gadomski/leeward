@@ -1,7 +1,7 @@
 use crate::geometry::{Rotation, Vector};
-use crate::partials::Variable;
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use serde::Deserialize;
+use std::path::Path;
 
 /// A lidar equation configuration.
 #[derive(Clone, Copy, Debug, Deserialize, Default)]
@@ -12,14 +12,14 @@ pub struct Config {
 }
 
 impl Config {
-    /// Adjust the configuration by the associated delta.
-    pub fn adjust(&mut self, variable: Variable, value: f64) -> Result<(), Error> {
-        match variable {
-            Variable::BoresightRoll => self.boresight.roll -= value,
-            Variable::BoresightPitch => self.boresight.pitch -= value,
-            Variable::BoresightYaw => self.boresight.yaw -= value,
-            _ => return Err(anyhow!("Cannot adjust variable: {}", variable)),
-        }
-        Ok(())
+    /// Creates a configuration from TOML in a file path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let config = leeward::Config::from_path("examples/config.toml").unwrap();
+    /// ```
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
+        toml::from_str(&std::fs::read_to_string(path)?).map_err(Into::into)
     }
 }

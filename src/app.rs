@@ -1,12 +1,11 @@
 //! Command line application, used by main.rs.
 
-use crate::partials::{Dimension, Partial, Variable};
+use crate::partials::Partial;
 use crate::{Config, Measurement, Trajectory};
 use anyhow::{anyhow, Error};
 use csv::Writer;
 use indicatif::ProgressBar;
 use las::Read;
-use nalgebra::{DMatrix, DVector};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -193,72 +192,12 @@ impl App {
     /// Calculates a boresight alignment.
     pub fn boresight<P0: AsRef<Path>, P1: AsRef<Path>>(
         &self,
-        trajectory: P0,
-        lasfile: P1,
-        config: Config,
-        decimation: usize,
+        _trajectory: P0,
+        _lasfile: P1,
+        _config: Config,
+        _decimation: usize,
     ) -> Result<(), Error> {
-        let trajectory = self.read_trajectory(trajectory)?;
-        let mut reader = las::Reader::from_path(lasfile.as_ref())?;
-        let progress =
-            self.optional_progress_bar(reader.header().number_of_points() / decimation as u64);
-        progress.set_message(&format!("reading {}", lasfile.as_ref().display(),));
-        let mut measurements = vec![];
-        for result in reader.points().step_by(decimation) {
-            let point = result?;
-            let measurement = trajectory.measurement(point, config)?;
-            measurements.push(measurement);
-            progress.inc(1);
-        }
-        progress.finish_with_message(&format!("done reading {}", lasfile.as_ref().display(),));
-
-        let variables = [
-            Variable::BoresightRoll,
-            Variable::BoresightPitch,
-            Variable::BoresightYaw,
-        ];
-        let last_error = std::f64::INFINITY;
-        loop {
-            let residuals = DVector::from_iterator(
-                measurements.len() * 3,
-                measurements
-                    .iter()
-                    .flat_map(|m| m.misalignment().into_iter()),
-            );
-            let error = residuals.norm();
-            let relative_error = ((error - last_error) / error).abs();
-            println!(
-                "last_error={}, error={}, relative_error={}",
-                last_error, error, relative_error,
-            );
-            if relative_error < 1e-6 {
-                break;
-            } else {
-                let _last_error = error;
-            }
-            let mut jacobian = DMatrix::<f64>::zeros(measurements.len() * 3, variables.len());
-            for (i, measurement) in measurements.iter().enumerate() {
-                for (j, dimension) in Dimension::iter().enumerate() {
-                    let row = i * 3 + j;
-                    for (col, variable) in variables.iter().enumerate() {
-                        jacobian[(row, col)] = measurement.partial(Partial(dimension, *variable));
-                    }
-                }
-            }
-            let adjustments = (jacobian.transpose() * jacobian.clone())
-                .try_inverse()
-                .ok_or_else(|| anyhow!("No inverse found"))?
-                * jacobian.transpose()
-                * residuals;
-            let mut new_config = config.clone();
-            for (&variable, &adjustment) in variables.iter().zip(adjustments.iter()) {
-                new_config.adjust(variable, adjustment)?;
-            }
-            unimplemented!()
-        }
-        println!("last_error={}", last_error);
-
-        Ok(())
+        unimplemented!()
     }
 
     /// Prints a single measurement.
@@ -384,13 +323,6 @@ impl OptionalProgressBar {
         if let Some(progress_bar) = &self.0 {
             progress_bar.finish_with_message(msg);
         }
-    }
-}
-
-impl Config {
-    /// Creates a configuration from TOML in a file path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
-        toml::from_str(&std::fs::read_to_string(path)?).map_err(Into::into)
     }
 }
 
