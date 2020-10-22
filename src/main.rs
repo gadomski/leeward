@@ -2,8 +2,8 @@
 extern crate clap;
 
 use anyhow::Error;
-use leeward::app::BackconvertOptions;
-use leeward::{App, Config};
+use leeward::app::{App, BackconvertOptions};
+use leeward::Config;
 
 fn main() -> Result<(), Error> {
     let yaml = load_yaml!("cli.yml");
@@ -26,7 +26,6 @@ fn main() -> Result<(), Error> {
             Config::from_path(m.value_of("CONFIG").unwrap())?,
             m.value_of("OUTFILE").unwrap(),
             m.value_of("decimation").unwrap_or("1").parse()?,
-            m.value_of("quantization").unwrap_or("100").parse()?,
             m.is_present("all"),
         )?;
     } else if let Some(m) = matches.subcommand_matches("backconvert") {
@@ -48,7 +47,6 @@ fn main() -> Result<(), Error> {
             backconverter,
             m.value_of("OUTFILE").unwrap(),
             m.value_of("decimation").unwrap_or("1").parse()?,
-            m.value_of("quantization").unwrap_or("100").parse()?,
         )?;
     } else if let Some(m) = matches.subcommand_matches("boresight") {
         app.boresight(
@@ -56,7 +54,6 @@ fn main() -> Result<(), Error> {
             m.value_of("LASFILE").unwrap(),
             Config::from_path(m.value_of("CONFIG").unwrap())?,
             m.value_of("decimation").unwrap_or("1").parse()?,
-            m.value_of("quantization").unwrap_or("100").parse()?,
         )?;
     } else if let Some(m) = matches.subcommand_matches("measurement") {
         app.measurement(
@@ -64,7 +61,6 @@ fn main() -> Result<(), Error> {
             m.value_of("LASFILE").unwrap(),
             Config::from_path(m.value_of("CONFIG").unwrap())?,
             m.value_of("INDEX").unwrap().parse()?,
-            m.value_of("quantization").unwrap_or("100").parse()?,
         )?;
     } else if let Some(m) = matches.subcommand_matches("partials") {
         app.partials(
@@ -73,7 +69,6 @@ fn main() -> Result<(), Error> {
             Config::from_path(m.value_of("CONFIG").unwrap())?,
             m.value_of("OUTFILE").unwrap(),
             m.value_of("decimation").unwrap_or("1").parse()?,
-            m.value_of("quantization").unwrap_or("100").parse()?,
             m.value_of("delta").unwrap_or("0.01").parse()?,
         )?;
     }

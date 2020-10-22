@@ -86,7 +86,6 @@ mod lidar;
 mod partials;
 mod trajectory;
 
-pub use app::App;
 pub use config::Config;
 pub use lidar::Measurement;
 pub use trajectory::Trajectory;

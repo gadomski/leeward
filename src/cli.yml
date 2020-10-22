@@ -50,10 +50,6 @@ subcommands:
                 long: decimation
                 takes_value: true
                 help: The amount to decimate the output points
-            - quantization:
-                long: quantization
-                takes_value: true
-                help: The quanaziation level for the trajectory <-> point mapping. A level of 1 means that las points will be mapped to trajectory data at the 1 second level. Quantization of 100 means at the 10 millisecond level.
             - all:
                 long: all
                 short: a
@@ -82,10 +78,6 @@ subcommands:
                 long: decimation
                 takes_value: true
                 help: The amount to decimate the output points
-            - quantization:
-                long: quantization
-                takes_value: true
-                help: The quanaziation level for the trajectory <-> point mapping. A level of 1 means that las points will be mapped to trajectory data at the 1 second level. Quantization of 100 means at the 10 millisecond level.
             - original:
                 long: original
                 help: Pass this flag to write the original XYZ points from the las file, not the backconverted values.
@@ -130,10 +122,6 @@ subcommands:
                 long: decimation
                 takes_value: true
                 help: The amount to decimate the points used for boresight alignment
-            - quantization:
-                long: quantization
-                takes_value: true
-                help: The quanaziation level for the trajectory <-> point mapping. A level of 1 means that las points will be mapped to trajectory data at the 1 second level. Quantization of 100 means at the 10 millisecond level.
     - measurement:
         about: Write a single measurement to stdout (in debug format)
         args:
@@ -153,10 +141,6 @@ subcommands:
                 required: true
                 index: 4
                 help: The index of the point to write (zero-indexed)
-            - quantization:
-                long: quantization
-                takes_value: true
-                help: The quanaziation level for the trajectory <-> point mapping. A level of 1 means that las points will be mapped to trajectory data at the 1 second level. Quantization of 100 means at the 10 millisecond level.
     - partials:
         about: Asses the partial derivatives
         args:
@@ -176,10 +160,6 @@ subcommands:
                 required: true
                 index: 4
                 help: The output csv file
-            - quantization:
-                long: quantization
-                takes_value: true
-                help: The quanaziation level for the trajectory <-> point mapping. A level of 1 means that las points will be mapped to trajectory data at the 1 second level. Quantization of 100 means at the 10 millisecond level.
             - decimation:
                 short: d
                 long: decimation

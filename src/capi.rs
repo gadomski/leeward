@@ -1,3 +1,24 @@
+//! The C API for leeward.
+//!
+//! # Examples
+//!
+//! Create an opaque `Leeward` structure, use it to calculate TPU, then clean up after yourself:
+//!
+//! ```
+//! use std::ffi::CString;
+//! use leeward::capi;
+//! use las::Read;
+//!
+//! let sbet_path = CString::new("examples/sbet.out").unwrap();
+//! let config_path = CString::new("examples/config.toml").unwrap();
+//! let leeward = capi::leeward_new(sbet_path.as_ptr(), config_path.as_ptr());
+//! let point = las::Reader::from_path("examples/one-point.las").unwrap().points().next().unwrap().unwrap();
+//! let tpu = capi::leeward_tpu(leeward, point.x, point.y, point.z, point.scan_angle, point.gps_time.unwrap());
+//! unsafe { println!("sigma_magnitude={}", (*tpu).sigma_magnitude) };
+//! capi::leeward_tpu_delete(tpu);
+//! capi::leeward_delete(leeward);
+//! ```
+
 use crate::{Config, Measurement, Trajectory};
 use anyhow::Error;
 use libc::{c_char, c_double};
@@ -17,11 +38,11 @@ impl Leeward {
 
 #[repr(C)]
 pub struct LeewardTpu {
-    sigma_x: f64,
-    sigma_y: f64,
-    sigma_horizontal: f64,
-    sigma_vertical: f64,
-    sigma_magnitude: f64,
+    pub sigma_x: f64,
+    pub sigma_y: f64,
+    pub sigma_horizontal: f64,
+    pub sigma_vertical: f64,
+    pub sigma_magnitude: f64,
 }
 
 #[no_mangle]
