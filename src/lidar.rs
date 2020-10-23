@@ -69,6 +69,11 @@ impl Measurement {
         }
     }
 
+    /// Returns this with config.
+    pub fn with_config(&self, config: Config) -> Measurement {
+        Measurement::new(self.las.clone(), self.sbet, config)
+    }
+
     /// Returns this measurement's las point.
     pub fn las_point(&self) -> Point {
         Point {

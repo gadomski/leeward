@@ -1,10 +1,10 @@
 use nalgebra::{Matrix3, Vector3};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::ops::Sub;
 use std::vec::IntoIter;
 
 /// A three dimensional vector.
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
 #[allow(missing_docs)]
 pub struct Vector {
     pub x: f64,
@@ -15,7 +15,7 @@ pub struct Vector {
 pub type Point = Vector;
 
 /// A three dimensional rotation.
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
 #[allow(missing_docs)]
 pub struct Rotation {
     pub roll: f64,

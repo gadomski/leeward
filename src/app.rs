@@ -197,12 +197,101 @@ impl App {
     /// Calculates a boresight alignment.
     pub fn boresight<P0: AsRef<Path>, P1: AsRef<Path>>(
         &self,
-        _trajectory: P0,
-        _lasfile: P1,
-        _config: Config,
-        _decimation: usize,
+        trajectory: P0,
+        lasfile: P1,
+        mut config: Config,
+        decimation: usize,
     ) -> Result<(), Error> {
-        unimplemented!()
+        use crate::partials::{Dimension, Variable};
+        use nalgebra::{DVector, Dynamic, MatrixMN, Vector3, U3};
+
+        let trajectory = self.read_trajectory(trajectory)?;
+        let mut reader = las::Reader::from_path(lasfile)?;
+        let mut measurements = Vec::new();
+        for result in reader.points().step_by(decimation) {
+            let point = result?;
+            measurements.push(trajectory.measurement(point, config)?);
+        }
+        let variables = [
+            Variable::BoresightRoll,
+            Variable::BoresightPitch,
+            Variable::BoresightYaw,
+        ];
+        let calculate_residuals = |measurements: &[Measurement]| -> DVector<f64> {
+            let mut residuals = DVector::zeros(measurements.len() * 3);
+            for (i, measurement) in measurements.iter().enumerate() {
+                let misalignment = Vector3::from(measurement.misalignment());
+                for (j, _) in Dimension::iter().enumerate() {
+                    let row = i * 3 + j;
+                    residuals[row] = misalignment[j];
+                }
+            }
+            residuals
+        };
+        let calculate_jacobian = |measurements: &[Measurement]| -> MatrixMN<f64, Dynamic, U3> {
+            let mut jacobian = MatrixMN::<f64, Dynamic, U3>::zeros(measurements.len() * 3);
+            for (i, measurement) in measurements.iter().enumerate() {
+                for (j, dimension) in Dimension::iter().enumerate() {
+                    let row = i * 3 + j;
+                    for (col, &variable) in variables.iter().enumerate() {
+                        jacobian[(row, col)] = measurement.partial((dimension, variable));
+                    }
+                }
+            }
+            jacobian
+        };
+        let update_config = |config: &Config, boresight: Vector3<f64>| -> Config {
+            let mut new_config = config.clone();
+            new_config.boresight.roll = boresight[0];
+            new_config.boresight.pitch = boresight[1];
+            new_config.boresight.yaw = boresight[2];
+            new_config
+        };
+        let update_measurements =
+            |measurements: &[Measurement], config: Config| -> Vec<Measurement> {
+                let mut new_measurements = Vec::new();
+                for measurement in measurements {
+                    new_measurements.push(measurement.with_config(config))
+                }
+                new_measurements
+            };
+        let mut iter = 0;
+        let mut residuals = calculate_residuals(&measurements);
+        let mut ssr = residuals.norm();
+        println!(
+            "Initial setup: ssr={}, roll={}, pitch={}, yaw={}",
+            ssr, config.boresight.roll, config.boresight.pitch, config.boresight.yaw
+        );
+        loop {
+            let jacobian = calculate_jacobian(&measurements);
+            let boresight = Vector3::new(
+                config.boresight.roll,
+                config.boresight.pitch,
+                config.boresight.yaw,
+            );
+            let new_boresight = (jacobian.transpose() * &jacobian).try_inverse().unwrap()
+                * jacobian.transpose()
+                * (&jacobian * boresight - &residuals);
+            let new_config = update_config(&config, new_boresight);
+            let new_measurements = update_measurements(&measurements, new_config);
+            let new_residuals = calculate_residuals(&new_measurements);
+            let new_ssr = new_residuals.norm();
+            if new_ssr < ssr {
+                measurements = new_measurements;
+                config = new_config;
+                residuals = new_residuals;
+                ssr = new_ssr;
+                println!(
+                    "Iter #{}, ssr reduced, updating config: ssr={}, roll={}, pitch={}, yaw={}",
+                    iter, ssr, config.boresight.roll, config.boresight.pitch, config.boresight.yaw
+                );
+            } else {
+                println!("Iter #{}, ssr increased, not updating config: ssr={}, bad_ssr={}, roll={}, pitch={}, yaw={}", iter, ssr, new_ssr, config.boresight.roll, config.boresight.pitch, config.boresight.yaw);
+                break;
+            }
+            iter += 1;
+        }
+        Ok(())
     }
 
     /// Prints a single measurement.

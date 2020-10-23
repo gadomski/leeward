@@ -1,10 +1,10 @@
 use crate::geometry::{Rotation, Vector};
 use anyhow::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// A lidar equation configuration.
-#[derive(Clone, Copy, Debug, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, Deserialize, Default, Serialize)]
 pub struct Config {
     /// The UTM zone in which to do the calculations.
     pub utm_zone: u8,
