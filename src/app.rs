@@ -291,6 +291,7 @@ impl App {
             }
             iter += 1;
         }
+        println!("{}", toml::to_string_pretty(&config)?);
         Ok(())
     }
 
