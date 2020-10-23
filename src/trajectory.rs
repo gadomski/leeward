@@ -131,8 +131,8 @@ fn quantize(time: f64, level: f64) -> i64 {
 
 fn calculate_level(points: &[Point]) -> f64 {
     let mut delta = 0.0;
-    for (a, b) in points.iter().zip(points.iter().next()) {
+    for (a, b) in points.iter().zip(points.iter().skip(1)) {
         delta += b.time - a.time;
     }
-    delta / (points.len() - 1) as f64
+    (points.len() - 1) as f64 / delta
 }

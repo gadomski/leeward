@@ -126,7 +126,10 @@ impl App {
             lasfile.as_ref().display()
         ));
         let mut outfile = File::create(outfile)?;
-        writeln!(outfile, "X,Y,Z,sigmaX,sigmaY,sigmaHorizontal,sigmaVertical")?;
+        writeln!(
+            outfile,
+            "X,Y,Z,sigmaX,sigmaY,sigmaHorizontal,sigmaVertical,sigmaMagnitude"
+        )?;
         for result in reader.points().step_by(decimation) {
             let point = result?;
             let measurement = trajectory.measurement(point, config)?;
@@ -134,7 +137,7 @@ impl App {
             let point = measurement.las_point();
             writeln!(
                 outfile,
-                "{},{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{}",
                 point.x,
                 point.y,
                 point.z,
@@ -142,6 +145,7 @@ impl App {
                 covariance[(1, 1)].sqrt(),
                 (covariance[(0, 0)] + covariance[(1, 1)]).sqrt(),
                 covariance[(2, 2)].sqrt(),
+                (covariance[(0, 0)] + covariance[(1, 1)] + covariance[(2, 2)]).sqrt(),
             )?;
             progress.inc(1);
         }
@@ -218,6 +222,47 @@ impl App {
         let measurement = trajectory.measurement(point, config)?;
         println!("{:?}", measurement);
         println!("{:?}", measurement.gnss());
+        Ok(())
+    }
+
+    /// Converts the data to the platform's coordinate system.
+    pub fn platform<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
+        &self,
+        trajectory: P0,
+        lasfile: P1,
+        config: Config,
+        outfile: P2,
+        decimation: usize,
+    ) -> Result<(), Error> {
+        let trajectory = self.read_trajectory(trajectory)?;
+        let mut reader = las::Reader::from_path(lasfile.as_ref())?;
+        let mut outfile = File::create(outfile)?;
+        write!(
+            outfile,
+            "LasX,LasY,LasZ,LeewardX,LeewardY,LeewardZ,ScanAngle,Range"
+        )?;
+        for partial in Partial::iter() {
+            write!(outfile, ",{}", partial)?;
+        }
+        writeln!(outfile, "")?;
+        for result in reader.points().step_by(decimation) {
+            let point = result?;
+            let measurement = trajectory.measurement(point, config)?;
+            let las = measurement.platform();
+            let leeward = measurement.configured_point_in_platform();
+            let measurement = measurement.to_platform();
+            let scan_angle = measurement.scan_angle().to_degrees();
+            let range = measurement.range();
+            write!(
+                outfile,
+                "{},{},{},{},{},{},{},{}",
+                las.x, las.y, las.z, leeward.x, leeward.y, leeward.z, scan_angle, range,
+            )?;
+            for partial in Partial::iter() {
+                write!(outfile, ",{}", measurement.partial(partial))?;
+            }
+            writeln!(outfile, "")?;
+        }
         Ok(())
     }
 

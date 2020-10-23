@@ -115,9 +115,9 @@ impl Measurement {
         self.las.gps_time
     }
 
-    /// Returns the scan angle as calculated from the position, orientation, and the point.
+    /// Returns the scan angle.
     pub fn scan_angle(&self) -> f64 {
-        unimplemented!()
+        self.scan_angle
     }
 
     /// Returns the las point in the platform coordinates.
@@ -125,6 +125,11 @@ impl Measurement {
         (self.platform_to_global_rotation().transpose()
             * Vector3::from(self.las_point() - self.gnss))
         .into()
+    }
+    /// Returns the configured point in the platform coordinates.
+    pub fn configured_point_in_platform(&self) -> Point {
+        (Matrix3::from(self.boresight) * self.scanner_vector() - Vector3::from(self.lever_arm))
+            .into()
     }
 
     /// Returns the scan angle as reported in the las file.
@@ -139,6 +144,22 @@ impl Measurement {
 
     fn platform_to_global_rotation(&self) -> Matrix3<f64> {
         Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.) * Matrix3::from(self.imu)
+    }
+
+    /// Returns this measurement with the IMU and GNSS zeroed out.
+    pub fn to_platform(&self) -> Measurement {
+        let mut measurement = self.clone();
+        measurement.imu = Rotation {
+            roll: 0.,
+            pitch: 0.,
+            yaw: 0.,
+        };
+        measurement.gnss = Point {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        };
+        measurement
     }
 
     /// Returns the partial derivative for this measurement.

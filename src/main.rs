@@ -27,6 +27,14 @@ fn main() -> Result<(), Error> {
             m.value_of("OUTFILE").unwrap(),
             m.value_of("decimation").unwrap_or("1").parse()?,
         )?;
+    } else if let Some(m) = matches.subcommand_matches("platform") {
+        app.platform(
+            m.value_of("TRAJECTORY").unwrap(),
+            m.value_of("LASFILE").unwrap(),
+            Config::from_path(m.value_of("CONFIG").unwrap())?,
+            m.value_of("OUTFILE").unwrap(),
+            m.value_of("decimation").unwrap_or("1").parse()?,
+        )?;
     } else if let Some(m) = matches.subcommand_matches("backconvert") {
         let backconverter = BackconvertOptions {
             original: m.is_present("original"),
