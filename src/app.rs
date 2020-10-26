@@ -203,7 +203,7 @@ impl App {
         decimation: usize,
     ) -> Result<(), Error> {
         use crate::partials::{Dimension, Variable};
-        use nalgebra::{DVector, Dynamic, MatrixMN, Vector6, U6};
+        use nalgebra::{DVector, Dynamic, MatrixMN, Vector3, U3};
 
         let trajectory = self.read_trajectory(trajectory)?;
         let mut reader = las::Reader::from_path(lasfile)?;
@@ -216,12 +216,8 @@ impl App {
             Variable::BoresightRoll,
             Variable::BoresightPitch,
             Variable::BoresightYaw,
-            Variable::LeverArmX,
-            Variable::LeverArmY,
-            Variable::LeverArmZ,
         ];
         let calculate_residuals = |measurements: &[Measurement]| -> DVector<f64> {
-            use nalgebra::Vector3;
             let mut residuals = DVector::zeros(measurements.len() * 3);
             for (i, measurement) in measurements.iter().enumerate() {
                 let misalignment = Vector3::from(measurement.misalignment());
@@ -232,8 +228,8 @@ impl App {
             }
             residuals
         };
-        let calculate_jacobian = |measurements: &[Measurement]| -> MatrixMN<f64, Dynamic, U6> {
-            let mut jacobian = MatrixMN::<f64, Dynamic, U6>::zeros(measurements.len() * 3);
+        let calculate_jacobian = |measurements: &[Measurement]| -> MatrixMN<f64, Dynamic, U3> {
+            let mut jacobian = MatrixMN::<f64, Dynamic, U3>::zeros(measurements.len() * 3);
             for (i, measurement) in measurements.iter().enumerate() {
                 for (j, dimension) in Dimension::iter().enumerate() {
                     let row = i * 3 + j;
@@ -244,14 +240,11 @@ impl App {
             }
             jacobian
         };
-        let update_config = |config: &Config, values: Vector6<f64>| -> Config {
+        let update_config = |config: &Config, values: Vector3<f64>| -> Config {
             let mut new_config = config.clone();
             new_config.boresight.roll = values[0];
             new_config.boresight.pitch = values[1];
             new_config.boresight.yaw = values[2];
-            new_config.lever_arm.x = values[3];
-            new_config.lever_arm.y = values[4];
-            new_config.lever_arm.z = values[5];
             new_config
         };
         let update_measurements =
@@ -266,24 +259,15 @@ impl App {
         let mut residuals = calculate_residuals(&measurements);
         let mut rmse = residuals.norm();
         println!(
-            "Initial setup: rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
-            rmse,
-            config.boresight.roll,
-            config.boresight.pitch,
-            config.boresight.yaw,
-            config.lever_arm.x,
-            config.lever_arm.y,
-            config.lever_arm.z,
+            "Initial setup: rmse={}, roll={}, pitch={}, yaw={}",
+            rmse, config.boresight.roll, config.boresight.pitch, config.boresight.yaw,
         );
         loop {
             let jacobian = calculate_jacobian(&measurements);
-            let values = Vector6::new(
+            let values = Vector3::new(
                 config.boresight.roll,
                 config.boresight.pitch,
                 config.boresight.yaw,
-                config.lever_arm.x,
-                config.lever_arm.y,
-                config.lever_arm.z,
             );
             let new_boresight = (jacobian.transpose() * &jacobian).try_inverse().unwrap()
                 * jacobian.transpose()
@@ -298,28 +282,18 @@ impl App {
                 residuals = new_residuals;
                 rmse = new_rmse;
                 println!(
-                    "Iter #{}, rmse reduced, updating config: rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
-                    iter,
-                    rmse,
-                    config.boresight.roll,
-                    config.boresight.pitch,
-                    config.boresight.yaw,
-                    config.lever_arm.x,
-                    config.lever_arm.y,
-                    config.lever_arm.z,
+                    "Iter #{}, rmse reduced, updating config: rmse={}, roll={}, pitch={}, yaw={}",
+                    iter, rmse, config.boresight.roll, config.boresight.pitch, config.boresight.yaw,
                 );
             } else {
                 println!(
-                    "Iter #{}, rmse increased, not updating config: rmse={}, bad_rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
+                    "Iter #{}, rmse increased, not updating config: rmse={}, bad_rmse={}, roll={}, pitch={}, yaw={}",
                     iter,
                     rmse,
                     new_rmse,
                     config.boresight.roll,
                     config.boresight.pitch,
                     config.boresight.yaw,
-                    config.lever_arm.x,
-                    config.lever_arm.y,
-                    config.lever_arm.z
                 );
                 break;
             }
