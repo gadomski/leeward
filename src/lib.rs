@@ -88,7 +88,7 @@ mod lidar;
 mod partials;
 mod trajectory;
 
-pub use config::Config;
+pub use config::{Config, ErrorConfig};
 pub use geometry::{Point, Rotation, Vector};
 pub use lidar::Measurement;
 pub use trajectory::Trajectory;

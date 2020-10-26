@@ -1,6 +1,6 @@
 use crate::geometry::{Point, Rotation, Vector};
 use crate::partials::{Dimension, Partial, Variable};
-use crate::Config;
+use crate::{Config, ErrorConfig};
 use nalgebra::base::dimension::{U14, U3};
 use nalgebra::{Matrix3, MatrixMN, Vector3};
 
@@ -385,35 +385,38 @@ impl Measurement {
     }
 
     /// Returns the total propogated uncertainty as a covariance matrix.
-    pub fn tpu(&self) -> Matrix3<f64> {
+    pub fn tpu(&self, error_config: &ErrorConfig) -> Matrix3<f64> {
         let mut a = MatrixMN::<f64, U3, U14>::zeros();
         let mut error_covariance = MatrixMN::<f64, U14, U14>::zeros();
         for (col, variable) in Variable::iter().enumerate() {
             for (row, dimension) in Dimension::iter().enumerate() {
                 a[(row, col)] = self.partial((dimension, variable));
             }
-            error_covariance[(col, col)] = self.error(variable).powi(2);
+            error_covariance[(col, col)] = self.error(variable, error_config).powi(2);
         }
         a * error_covariance * a.transpose()
     }
 
     /// Returns the uncertainty for the assocaited variable.
-    pub fn error(&self, variable: Variable) -> f64 {
+    /// TODO should be a function of the error config, but we probably want to add in topography.
+    pub fn error(&self, variable: Variable, error_config: &ErrorConfig) -> f64 {
         match variable {
-            Variable::GnssX => 0.02,
-            Variable::GnssY => 0.02,
-            Variable::GnssZ => 0.04,
-            Variable::ImuRoll => 0.0025_f64.to_radians(),
-            Variable::ImuPitch => 0.0025_f64.to_radians(),
-            Variable::ImuYaw => 0.005_f64.to_radians(),
-            Variable::BoresightRoll => 0.001_f64.to_radians(),
-            Variable::BoresightPitch => 0.001_f64.to_radians(),
-            Variable::BoresightYaw => 0.004_f64.to_radians(),
-            Variable::Distance => 0.02,
-            Variable::ScanAngle => 0.001_f64.to_radians(),
-            Variable::LeverArmX => 0.02,
-            Variable::LeverArmY => 0.02,
-            Variable::LeverArmZ => 0.02,
+            Variable::GnssX => error_config.gnss.x,
+            Variable::GnssY => error_config.gnss.y,
+            Variable::GnssZ => error_config.gnss.z,
+            Variable::ImuRoll => error_config.imu.roll,
+            Variable::ImuPitch => error_config.imu.pitch,
+            Variable::ImuYaw => error_config.imu.yaw,
+            Variable::BoresightRoll => error_config.boresight.roll,
+            Variable::BoresightPitch => error_config.boresight.pitch,
+            Variable::BoresightYaw => error_config.boresight.yaw,
+            Variable::Distance => error_config.range,
+            Variable::ScanAngle => ((error_config.angular_resolution).powi(2)
+                + (error_config.beam_divergence / 4.0).powi(2))
+            .sqrt(),
+            Variable::LeverArmX => error_config.lever_arm.x,
+            Variable::LeverArmY => error_config.lever_arm.y,
+            Variable::LeverArmZ => error_config.lever_arm.z,
         }
     }
 }

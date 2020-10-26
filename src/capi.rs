@@ -134,7 +134,7 @@ pub extern "C" fn leeward_tpu(
     };
     match leeward.measurement(point) {
         Ok(measurement) => {
-            let covariance = measurement.tpu();
+            let covariance = measurement.tpu(&leeward.config.error);
             let tpu = LeewardTpu {
                 sigma_x: covariance[(0, 0)].sqrt(),
                 sigma_y: covariance[(1, 1)].sqrt(),

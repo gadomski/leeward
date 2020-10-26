@@ -133,7 +133,7 @@ impl App {
         for result in reader.points().step_by(decimation) {
             let point = result?;
             let measurement = trajectory.measurement(point, config)?;
-            let covariance = measurement.tpu();
+            let covariance = measurement.tpu(&config.error);
             let point = measurement.las_point();
             writeln!(
                 outfile,

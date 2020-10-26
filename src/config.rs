@@ -14,6 +14,34 @@ pub struct Config {
 
     /// The rotational misalignment between the IMU and the frame of the aircraft.
     pub boresight: Rotation,
+
+    /// The error constants.
+    pub error: ErrorConfig,
+}
+
+/// The consants used for error calculations.
+#[derive(Clone, Copy, Debug, Deserialize, Default, Serialize)]
+pub struct ErrorConfig {
+    /// IMU performance specifications.
+    pub imu: Rotation,
+
+    /// GNSS performance specifications.
+    pub gnss: Vector,
+
+    /// Boresight error estimates.
+    pub boresight: Rotation,
+
+    /// Lever arm error estimates.
+    pub lever_arm: Vector,
+
+    /// Ranging error in the scanner.
+    pub range: f64,
+
+    /// The beam divergence.
+    pub beam_divergence: f64,
+
+    /// The angular resolution of the scanner.
+    pub angular_resolution: f64,
 }
 
 impl Config {
