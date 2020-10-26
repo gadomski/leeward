@@ -264,10 +264,10 @@ impl App {
             };
         let mut iter = 0;
         let mut residuals = calculate_residuals(&measurements);
-        let mut ssr = residuals.norm();
+        let mut rmse = residuals.norm();
         println!(
-            "Initial setup: ssr={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
-            ssr,
+            "Initial setup: rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
+            rmse,
             config.boresight.roll,
             config.boresight.pitch,
             config.boresight.yaw,
@@ -291,16 +291,16 @@ impl App {
             let new_config = update_config(&config, new_boresight);
             let new_measurements = update_measurements(&measurements, new_config);
             let new_residuals = calculate_residuals(&new_measurements);
-            let new_ssr = new_residuals.norm();
-            if new_ssr < ssr {
+            let new_rmse = new_residuals.norm();
+            if new_rmse < rmse {
                 measurements = new_measurements;
                 config = new_config;
                 residuals = new_residuals;
-                ssr = new_ssr;
+                rmse = new_rmse;
                 println!(
-                    "Iter #{}, ssr reduced, updating config: ssr={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
+                    "Iter #{}, rmse reduced, updating config: rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
                     iter,
-                    ssr,
+                    rmse,
                     config.boresight.roll,
                     config.boresight.pitch,
                     config.boresight.yaw,
@@ -310,10 +310,10 @@ impl App {
                 );
             } else {
                 println!(
-                    "Iter #{}, ssr increased, not updating config: ssr={}, bad_ssr={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
+                    "Iter #{}, rmse increased, not updating config: rmse={}, bad_rmse={}, roll={}, pitch={}, yaw={}, x={}, y={}, z={}",
                     iter,
-                    ssr,
-                    new_ssr,
+                    rmse,
+                    new_rmse,
                     config.boresight.roll,
                     config.boresight.pitch,
                     config.boresight.yaw,

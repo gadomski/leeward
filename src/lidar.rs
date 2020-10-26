@@ -45,22 +45,26 @@ impl Measurement {
     pub fn new(las: las::Point, sbet: sbet::Point, config: Config) -> Measurement {
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
+        let imu = Rotation {
+            roll: sbet.roll,
+            pitch: sbet.pitch,
+            yaw: sbet.yaw,
+        };
+        let gnss = Point {
+            x: easting,
+            y: northing,
+            z: sbet.altitude,
+        };
+        let scanner_origin = -Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.)
+            * Matrix3::from(imu)
+            * Vector3::from(config.lever_arm);
+        let range =
+            (Vector3::new(las.x, las.y, las.z) - (Vector3::from(gnss) + scanner_origin)).norm();
         Measurement {
-            gnss: Point {
-                x: easting,
-                y: northing,
-                z: sbet.altitude,
-            },
-            imu: Rotation {
-                roll: sbet.roll,
-                pitch: sbet.pitch,
-                yaw: sbet.yaw,
-            },
+            gnss: gnss,
+            imu: imu,
             boresight: config.boresight,
-            range: ((easting - las.x).powi(2)
-                + (northing - las.y).powi(2)
-                + (sbet.altitude - las.z).powi(2))
-            .sqrt(),
+            range: range,
             scan_angle: f64::from(las.scan_angle).to_radians(),
             lever_arm: config.lever_arm,
             las: las,
