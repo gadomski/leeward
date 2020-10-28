@@ -355,6 +355,18 @@ impl Measurement {
         }
     }
 
+    /// Returns the incidence angle in radians, as determined by the provided normal.
+    pub fn incidence_angle(&self, nx: f64, ny: f64, nz: f64) -> f64 {
+        let normal = Vector3::new(nx, ny, nz);
+        let laser_direction = self.laser_direction();
+        (laser_direction.dot(&normal) / (normal.norm() * laser_direction.norm())).acos()
+    }
+
+    fn laser_direction(&self) -> Vector3<f64> {
+        let vector = Vector3::from(self.las_point() - self.gnss()); // TODO this should really be scanner origin
+        vector / vector.norm()
+    }
+
     fn adjust(&mut self, variable: Variable, adjustment: f64) {
         let reference = match variable {
             Variable::GnssX => &mut self.gnss.x,
