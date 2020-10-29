@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::path::Path;
 
 /// System and platform configuration.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Config {}
 
 impl Config {

@@ -15,7 +15,7 @@ impl Measurement {
     ///
     /// ```
     /// # use leeward::{Config, Measurement};
-    /// let measurement = Measurement::new(sbet::Point::default(), las::Point::default(), Config::default());
+    /// let measurement = Measurement::new(&sbet::Point::default(), &las::Point::default(), &Config::default());
     /// ```
     pub fn new(_sbet: &sbet::Point, las: &las::Point, _config: &Config) -> Measurement {
         Measurement {
