@@ -1,7 +1,7 @@
 use crate::{Config, Measurement};
 use anyhow::Error;
 use sbet::Point;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 /// Smoothed Best Estimate of a Trajectory (sbet)
 ///
@@ -10,6 +10,8 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Trajectory {
     points: Vec<Point>,
+    scale: f64,
+    index: HashMap<i64, usize>,
 }
 
 impl Trajectory {
@@ -25,7 +27,42 @@ impl Trajectory {
         use sbet::Reader;
         let reader = Reader::from_path(path)?;
         let points = reader.into_iter().collect::<Result<Vec<Point>, Error>>()?;
-        Ok(Trajectory { points })
+        Trajectory::new(points)
+    }
+
+    /// Creates a new trajectory.
+    ///
+    /// This method chooses the "best" index scale based upon the spacing of the sbet points.
+    /// To specify your own scale, use `new_with_scale`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let points = vec![sbet::Point::default()];
+    /// let trajectory = Trajectory::new(points);
+    /// ```
+    pub fn new(points: Vec<Point>) -> Result<Trajectory, Error> {
+        unimplemented!()
+    }
+
+    /// Creates a new trajectory with the provided points and index scale.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let points = vec![sbet::Point::default()];
+    /// let trajectory = Trajectory::new_with_scale(points, scale);
+    /// ```
+    pub fn new_with_scale(points: Vec<Point>, scale: f64) -> Trajectory {
+        Trajectory {
+            index: points
+                .iter()
+                .enumerate()
+                .map(|(i, p)| (time_as_integer(p.time, scale), i))
+                .collect(),
+            scale: scale,
+            points: points,
+        }
     }
 
     /// Returns the number of points in this trajectory.
@@ -82,6 +119,30 @@ impl Trajectory {
     pub fn measurement(&self, _point: &las::Point, _config: &Config) -> Result<Measurement, Error> {
         Ok(Measurement {})
     }
+
+    /// Returns the sbet point for the provided timestamp.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let points = vec![sbet::Point { time: 1., ..Default::default() }];
+    /// let trajectory = Trajectory::new_with_scale(points.clone(), 1.);
+    /// assert_eq!(points[0], trajectory.point(1.).unwrap());
+    /// ```
+    pub fn point(&self, time: f64) -> Option<&Point> {
+        let time = self.time_as_integer(time);
+        self.index
+            .get(&time)
+            .and_then(|index| self.points.get(*index))
+    }
+
+    fn time_as_integer(&self, time: f64) -> i64 {
+        time_as_integer(time, self.scale)
+    }
+}
+
+fn time_as_integer(time: f64, scale: f64) -> i64 {
+    (time / scale).round() as i64
 }
 
 #[cfg(test)]
@@ -92,5 +153,25 @@ mod tests {
     fn from_path() {
         let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
         assert_eq!(200, trajectory.len());
+    }
+
+    #[test]
+    fn time_within_bounds() {
+        let points = [1f64, 2.]
+            .iter()
+            .map(|&t| sbet::Point {
+                time: t,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let trajectory = Trajectory::new_with_scale(points.clone(), 1.0);
+        assert!(trajectory.point(0.49).is_none());
+        assert_eq!(&points[0], trajectory.point(0.51).unwrap());
+        assert_eq!(&points[0], trajectory.point(1.).unwrap());
+        assert_eq!(&points[0], trajectory.point(1.49).unwrap());
+        assert_eq!(&points[1], trajectory.point(1.51).unwrap());
+        assert_eq!(&points[1], trajectory.point(2.).unwrap());
+        assert_eq!(&points[1], trajectory.point(2.49).unwrap());
+        assert!(trajectory.point(2.51).is_none());
     }
 }
