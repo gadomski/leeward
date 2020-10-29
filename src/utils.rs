@@ -46,7 +46,7 @@ pub fn read_las<P: AsRef<Path>>(path: P) -> Result<Vec<las::Point>, Error> {
 ///
 /// Technically the rotation is an intrinsic Z -> Y' -> X'' rotation, but
 /// that's the same as an extrinsic X -> Y -> Z as given below.
-pub(crate) fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
+pub fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
     let c1 = roll.cos();
     let s1 = roll.sin();
     let c2 = pitch.cos();

@@ -20,6 +20,14 @@ struct CsvMeasurement {
     calculated_x: f64,
     calculated_y: f64,
     calculated_z: f64,
+    scanner_x: f64,
+    scanner_y: f64,
+    scanner_z: f64,
+    range: f64,
+    scan_angle: f64,
+    misalignment_x: f64,
+    misalignment_y: f64,
+    misalignment_z: f64,
 }
 
 impl From<&Measurement> for CsvMeasurement {
@@ -28,6 +36,10 @@ impl From<&Measurement> for CsvMeasurement {
         let las_platform = measurement.las_platform();
         let gnss = measurement.gnss_point();
         let calculated = measurement.calculated();
+        let scanner = measurement.scanner();
+        let range = measurement.range();
+        let scan_angle = measurement.scan_angle().to_degrees();
+        let misalignment = calculated - las;
         CsvMeasurement {
             las_x: las.x,
             las_y: las.y,
@@ -41,6 +53,14 @@ impl From<&Measurement> for CsvMeasurement {
             calculated_x: calculated.x,
             calculated_y: calculated.y,
             calculated_z: calculated.z,
+            scanner_x: scanner.x,
+            scanner_y: scanner.y,
+            scanner_z: scanner.z,
+            range,
+            scan_angle,
+            misalignment_x: misalignment.x,
+            misalignment_y: misalignment.y,
+            misalignment_z: misalignment.z,
         }
     }
 }

@@ -82,7 +82,7 @@ impl Measurement {
     /// let point = measurements[0].gnss_point();
     /// ```
     pub fn calculated(&self) -> Vector3<f64> {
-        self.gnss + self.imu * (self.boresight * self.scanner() - self.lever_arm)
+        self.gnss + self.ned_to_enu * self.imu * (self.boresight * self.scanner() - self.lever_arm)
     }
 
     /// Returns the measured point in the scanner's coordinate system.
@@ -108,7 +108,7 @@ impl Measurement {
     /// let range = measurements[0].range();
     /// ```
     pub fn range(&self) -> f64 {
-        unimplemented!()
+        (self.las - self.scanner_origin()).norm()
     }
 
     /// Returns this measurement's scan angle.
@@ -120,7 +120,15 @@ impl Measurement {
     /// let scan_angle = measurements[0].scan_angle();
     /// ```
     pub fn scan_angle(&self) -> f64 {
-        unimplemented!()
+        ((self.boresight.transpose() * (self.lever_arm + self.las_platform())).z / self.range())
+            .asin()
+    }
+
+    /// Returns this measurement's scanner origin in global coordinates.
+    ///
+    /// Lever arm.
+    pub fn scanner_origin(&self) -> Vector3<f64> {
+        self.gnss + self.ned_to_enu * self.imu * (-self.lever_arm)
     }
 
     /// Returns the uncertainty structure for this measurement.
