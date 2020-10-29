@@ -3,3 +3,7 @@ name = "leeward"
 version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 edition = "2018"
+
+[dependencies]
+anyhow = "1.0"
+sbet = { git = "https://github.com/gadomski/sbet-rs" }
