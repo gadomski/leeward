@@ -1,6 +1,6 @@
 use anyhow::Error;
 use sbet::Point;
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 /// Smoothed Best Estimate of a Trajectory (sbet)
 ///
