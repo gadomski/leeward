@@ -12,12 +12,14 @@
 
 pub mod config;
 mod measurement;
+mod partial;
 mod trajectory;
 mod uncertainty;
 mod utils;
 
 pub use config::Config;
 pub use measurement::Measurement;
+pub use partial::{Dimension, Partial, Variable};
 pub use trajectory::Trajectory;
 pub use uncertainty::Uncertainty;
 pub use utils::{measurements, read_las};
