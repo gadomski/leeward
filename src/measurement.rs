@@ -85,6 +85,18 @@ impl Measurement {
         self.gnss + self.ned_to_enu * self.imu * (self.boresight * self.scanner() - self.lever_arm)
     }
 
+    /// Returns the measured point as calculated through the lidar equation, in platform coordinates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let point = measurements[0].calculated_platform();
+    /// ```
+    pub fn calculated_platform(&self) -> Vector3<f64> {
+        self.boresight * self.scanner() - self.lever_arm
+    }
+
     /// Returns the measured point in the scanner's coordinate system.
     ///
     /// # Examples
