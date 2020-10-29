@@ -42,3 +42,19 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     let config = Config::from_path(config)?;
     trajectory.read_las(las, &config)
 }
+
+/// Utility method to read a las file to a vector of points.
+///
+/// # Examples
+///
+/// ```
+/// let points = leeward::read_las("data/points.las").unwrap();
+/// ```
+pub fn read_las<P: AsRef<Path>>(path: P) -> Result<Vec<las::Point>, Error> {
+    use las::{Read, Reader};
+    let mut reader = Reader::from_path(path)?;
+    reader
+        .points()
+        .map(|result| result.map_err(|e| Error::from(e)))
+        .collect()
+}

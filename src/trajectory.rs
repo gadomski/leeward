@@ -77,10 +77,10 @@ impl Trajectory {
     /// let points = leeward::read_las("data/points.las").unwrap();
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
-    /// let measurement = trajectory.measurement(points[0], config);
+    /// let measurement = trajectory.measurement(&points[0], &config);
     /// ```
     pub fn measurement(&self, _point: &las::Point, _config: &Config) -> Result<Measurement, Error> {
-        unimplemented!()
+        Ok(Measurement {})
     }
 }
 
