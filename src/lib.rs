@@ -54,7 +54,7 @@
 //! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
 //! # let point = reader.points().next().unwrap().unwrap();
 //! # let measurement = trajectory.measurement(point, config).unwrap();
-//! let covariance = measurement.tpu(&config.error);
+//! let covariance = measurement.tpu(&config.error, None);
 //! ```
 //!
 //! The diagonal of the covariance matrix is the x, y, and z variances respectively.
@@ -69,7 +69,7 @@
 //! # let mut reader = Reader::from_path("examples/one-point.las").unwrap();
 //! # let point = reader.points().next().unwrap().unwrap();
 //! # let measurement = trajectory.measurement(point, config).unwrap();
-//! # let covariance = measurement.tpu(&config.error);
+//! # let covariance = measurement.tpu(&config.error, None);
 //! let sigma_x = covariance[(0, 0)].sqrt();
 //! let sigma_y = covariance[(1, 1)].sqrt();
 //! let sigma_horizontal = (covariance[(0, 0)] + covariance[(1, 1)]).sqrt();

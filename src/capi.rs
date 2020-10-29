@@ -13,7 +13,8 @@
 //! let config_path = CString::new("examples/config.toml").unwrap();
 //! let leeward = capi::leeward_new(sbet_path.as_ptr(), config_path.as_ptr());
 //! let point = las::Reader::from_path("examples/one-point.las").unwrap().points().next().unwrap().unwrap();
-//! let tpu = capi::leeward_tpu(leeward, point.x, point.y, point.z, point.scan_angle, point.gps_time.unwrap());
+//! // FIXME normal calc
+//! let tpu = capi::leeward_tpu(leeward, point.x, point.y, point.z, point.scan_angle, point.gps_time.unwrap(), 0., 0., 1.);
 //! unsafe { println!("sigma_magnitude={}", (*tpu).sigma_magnitude) };
 //! capi::leeward_tpu_delete(tpu);
 //! capi::leeward_delete(leeward);
@@ -46,6 +47,7 @@ pub struct LeewardTpu {
     pub sigma_horizontal: f64,
     pub sigma_vertical: f64,
     pub sigma_magnitude: f64,
+    pub incidence_angle: f64,
 }
 
 /// Create a new `leeward::capi::Leeward` opaque structure.
@@ -113,6 +115,9 @@ pub extern "C" fn leeward_tpu(
     z: c_double,
     scan_angle: f32,
     gps_time: f64,
+    nx: c_double,
+    ny: c_double,
+    nz: c_double,
 ) -> *mut LeewardTpu {
     if leeward.is_null() {
         return ptr::null_mut();
@@ -134,7 +139,10 @@ pub extern "C" fn leeward_tpu(
     };
     match leeward.measurement(point) {
         Ok(measurement) => {
-            let covariance = measurement.tpu(&leeward.config.error);
+            use nalgebra::Vector3;
+            let normal = Vector3::new(nx, ny, nz);
+            let covariance = measurement.tpu(&leeward.config.error, Some(normal));
+            let incidence_angle = measurement.incidence_angle(normal);
             let tpu = LeewardTpu {
                 sigma_x: covariance[(0, 0)].sqrt(),
                 sigma_y: covariance[(1, 1)].sqrt(),
@@ -142,6 +150,7 @@ pub extern "C" fn leeward_tpu(
                 sigma_vertical: covariance[(2, 2)].sqrt(),
                 sigma_magnitude: (covariance[(0, 0)] + covariance[(1, 1)] + covariance[(2, 2)])
                     .sqrt(),
+                incidence_angle,
             };
             Box::into_raw(Box::new(tpu))
         }

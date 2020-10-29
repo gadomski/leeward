@@ -356,8 +356,11 @@ impl Measurement {
     }
 
     /// Returns the incidence angle in radians, as determined by the provided normal.
-    pub fn incidence_angle(&self, nx: f64, ny: f64, nz: f64) -> f64 {
-        let normal = Vector3::new(nx, ny, nz);
+    pub fn incidence_angle(&self, normal: Vector3<f64>) -> f64 {
+        if normal == Vector3::new(0., 0., 0.) {
+            return f64::NAN;
+        }
+        let normal = -normal;
         let laser_direction = self.laser_direction();
         (laser_direction.dot(&normal) / (normal.norm() * laser_direction.norm())).acos()
     }
@@ -397,21 +400,26 @@ impl Measurement {
     }
 
     /// Returns the total propogated uncertainty as a covariance matrix.
-    pub fn tpu(&self, error_config: &ErrorConfig) -> Matrix3<f64> {
+    pub fn tpu(&self, error_config: &ErrorConfig, normal: Option<Vector3<f64>>) -> Matrix3<f64> {
         let mut a = MatrixMN::<f64, U3, U14>::zeros();
         let mut error_covariance = MatrixMN::<f64, U14, U14>::zeros();
         for (col, variable) in Variable::iter().enumerate() {
             for (row, dimension) in Dimension::iter().enumerate() {
                 a[(row, col)] = self.partial((dimension, variable));
             }
-            error_covariance[(col, col)] = self.error(variable, error_config).powi(2);
+            error_covariance[(col, col)] = self.error(variable, error_config, normal).powi(2);
         }
         a * error_covariance * a.transpose()
     }
 
     /// Returns the uncertainty for the assocaited variable.
     /// TODO should be a function of the error config, but we probably want to add in topography.
-    pub fn error(&self, variable: Variable, error_config: &ErrorConfig) -> f64 {
+    pub fn error(
+        &self,
+        variable: Variable,
+        error_config: &ErrorConfig,
+        normal: Option<Vector3<f64>>,
+    ) -> f64 {
         match variable {
             Variable::GnssX => error_config.gnss.x,
             Variable::GnssY => error_config.gnss.y,
@@ -422,8 +430,17 @@ impl Measurement {
             Variable::BoresightRoll => error_config.boresight.roll,
             Variable::BoresightPitch => error_config.boresight.pitch,
             Variable::BoresightYaw => error_config.boresight.yaw,
-            Variable::Distance => error_config.range,
-            Variable::ScanAngle => ((error_config.angular_resolution).powi(2)
+            Variable::Distance => {
+                if let Some(normal) = normal {
+                    (error_config.range.powi(2)
+                        + (self.range * error_config.beam_divergence / 4.0
+                            * self.incidence_angle(normal).tan()))
+                    .sqrt()
+                } else {
+                    error_config.range
+                }
+            }
+            Variable::ScanAngle => (error_config.angular_resolution.powi(2)
                 + (error_config.beam_divergence / 4.0).powi(2))
             .sqrt(),
             Variable::LeverArmX => error_config.lever_arm.x,
