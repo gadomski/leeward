@@ -4,7 +4,9 @@ use std::path::Path;
 
 /// System and platform configuration.
 #[derive(Debug, Deserialize, Default)]
-pub struct Config {}
+pub struct Config {
+    pub utm_zone: u8,
+}
 
 impl Config {
     /// Creates a configuration from a toml path.

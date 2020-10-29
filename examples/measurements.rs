@@ -11,15 +11,22 @@ struct CsvMeasurement {
     las_x: f64,
     las_y: f64,
     las_z: f64,
+    gnss_x: f64,
+    gnss_y: f64,
+    gnss_z: f64,
 }
 
 impl From<&Measurement> for CsvMeasurement {
     fn from(measurement: &Measurement) -> CsvMeasurement {
         let las = measurement.las_point();
+        let gnss = measurement.gnss_point();
         CsvMeasurement {
             las_x: las.x,
             las_y: las.y,
             las_z: las.z,
+            gnss_x: gnss.x,
+            gnss_y: gnss.y,
+            gnss_z: gnss.z,
         }
     }
 }

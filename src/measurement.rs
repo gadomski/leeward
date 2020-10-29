@@ -6,6 +6,7 @@ use crate::{Config, Point, Uncertainty};
 #[derive(Debug)]
 pub struct Measurement {
     las: Point,
+    gnss: Point,
 }
 
 impl Measurement {
@@ -17,12 +18,19 @@ impl Measurement {
     /// # use leeward::{Config, Measurement};
     /// let measurement = Measurement::new(&sbet::Point::default(), &las::Point::default(), &Config::default());
     /// ```
-    pub fn new(_sbet: &sbet::Point, las: &las::Point, _config: &Config) -> Measurement {
+    pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
+        let (northing, easting, _) =
+            utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
         Measurement {
             las: Point {
                 x: las.x,
                 y: las.y,
                 z: las.z,
+            },
+            gnss: Point {
+                x: easting,
+                y: northing,
+                z: sbet.altitude,
             },
         }
     }
@@ -37,6 +45,18 @@ impl Measurement {
     /// ```
     pub fn las_point(&self) -> Point {
         self.las
+    }
+
+    /// Returns this measurement's gnss point in projected coordinates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let point = measurements[0].gnss_point();
+    /// ```
+    pub fn gnss_point(&self) -> Point {
+        self.gnss
     }
 
     /// Returns the uncertainty structure for this measurement.

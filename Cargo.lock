@@ -158,6 +158,7 @@ dependencies = [
  "sbet",
  "serde",
  "toml",
+ "utm",
 ]
 
 [[package]]
@@ -397,6 +398,12 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
+
+[[package]]
+name = "utm"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be19ba4e3623d312e823efa1750ea85129b9d348880f2ce7743f236060e150ad"
 
 [[package]]
 name = "uuid"
