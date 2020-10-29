@@ -7,11 +7,20 @@ use serde::Serialize;
 use std::io;
 
 #[derive(Debug, Serialize)]
-struct CsvMeasurement {}
+struct CsvMeasurement {
+    las_x: f64,
+    las_y: f64,
+    las_z: f64,
+}
 
 impl From<&Measurement> for CsvMeasurement {
-    fn from(_measurement: &Measurement) -> CsvMeasurement {
-        CsvMeasurement {}
+    fn from(measurement: &Measurement) -> CsvMeasurement {
+        let las = measurement.las_point();
+        CsvMeasurement {
+            las_x: las.x,
+            las_y: las.y,
+            las_z: las.z,
+        }
     }
 }
 

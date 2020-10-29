@@ -61,7 +61,7 @@ impl Trajectory {
             index: points
                 .iter()
                 .enumerate()
-                .map(|(i, p)| (time_as_integer(p.time, scale), i))
+                .map(|(i, p)| (scaled_time(p.time, scale), i))
                 .collect(),
             scale: scale,
             points: points,
@@ -127,8 +127,14 @@ impl Trajectory {
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
     /// let measurement = trajectory.measurement(&points[0], &config).unwrap();
     /// ```
-    pub fn measurement(&self, _point: &las::Point, _config: &Config) -> Result<Measurement, Error> {
-        Ok(Measurement {})
+    pub fn measurement(&self, las: &las::Point, config: &Config) -> Result<Measurement, Error> {
+        let time = las
+            .gps_time
+            .ok_or_else(|| anyhow!("missing gps_time on las point"))?;
+        let sbet = self
+            .point(time)
+            .ok_or_else(|| anyhow!("could not find sbet point for las gps_time: {}", time))?;
+        Ok(Measurement::new(sbet, las, config))
     }
 
     /// Returns the sbet point for the provided timestamp.
@@ -142,18 +148,41 @@ impl Trajectory {
     /// assert_eq!(&points[0], trajectory.point(1.).unwrap());
     /// ```
     pub fn point(&self, time: f64) -> Option<&sbet::Point> {
-        let time = self.time_as_integer(time);
+        let time = self.scaled_time(time);
         self.index
             .get(&time)
             .and_then(|index| self.points.get(*index))
     }
 
-    fn time_as_integer(&self, time: f64) -> i64 {
-        time_as_integer(time, self.scale)
+    /// Returns a reference to a slice of all this trajectory's points.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Trajectory;
+    /// let points = vec![sbet::Point { time: 1., ..Default::default() }];
+    /// let trajectory = Trajectory::new_with_scale(points.clone(), 1.);
+    /// let points = trajectory.points();
+    /// ```
+    pub fn points(&self) -> &[sbet::Point] {
+        &self.points
+    }
+
+    /// Returns the provided time as a scaled integer, as deteremined by this trajectory's index scale.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Trajectory;
+    /// let trajectory = Trajectory::new_with_scale(vec![], 0.1);
+    /// assert_eq!(10, trajectory.scaled_time(1.0));
+    /// ```
+    pub fn scaled_time(&self, time: f64) -> i64 {
+        scaled_time(time, self.scale)
     }
 }
 
-fn time_as_integer(time: f64, scale: f64) -> i64 {
+fn scaled_time(time: f64, scale: f64) -> i64 {
     (time / scale).round() as i64
 }
 
