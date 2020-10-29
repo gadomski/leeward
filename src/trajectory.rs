@@ -49,13 +49,37 @@ impl Trajectory {
     /// # use leeward::{Config, Trajectory};
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
-    /// let measurements = trajectory.measurements("data/points.las", &config).unwrap();
+    /// let measurements = trajectory.read_las("data/points.las", &config).unwrap();
     /// ```
-    pub fn measurements<P: AsRef<Path>>(
+    pub fn read_las<P: AsRef<Path>>(
         &self,
-        _path: P,
-        _config: &Config,
+        path: P,
+        config: &Config,
     ) -> Result<Vec<Measurement>, Error> {
+        use las::{Read, Reader};
+        let mut reader = Reader::from_path(path)?;
+        reader
+            .points()
+            .map(|result| {
+                result
+                    .map_err(|e| Error::from(e))
+                    .and_then(|point| self.measurement(&point, config))
+            })
+            .collect()
+    }
+
+    /// Creates a measurement from a point and a configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Config, Trajectory};
+    /// let points = leeward::read_las("data/points.las").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let measurement = trajectory.measurement(points[0], config);
+    /// ```
+    pub fn measurement(&self, _point: &las::Point, _config: &Config) -> Result<Measurement, Error> {
         unimplemented!()
     }
 }

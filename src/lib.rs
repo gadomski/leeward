@@ -27,7 +27,11 @@ pub use trajectory::Trajectory;
 /// # Examples
 ///
 /// ```
-/// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+/// let measurements = leeward::measurements(
+///     "data/sbet.out",
+///     "data/points.las",
+///     "data/config.toml"
+/// ).unwrap();
 /// ```
 pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     sbet: P0,
@@ -36,5 +40,5 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
 ) -> Result<Vec<Measurement>, Error> {
     let trajectory = Trajectory::from_path(sbet)?;
     let config = Config::from_path(config)?;
-    trajectory.measurements(las, &config)
+    trajectory.read_las(las, &config)
 }
