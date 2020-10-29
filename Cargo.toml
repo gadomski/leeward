@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 las = "0.7"
+nalgebra = "0.23"
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"

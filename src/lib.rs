@@ -11,14 +11,12 @@
 //! ```
 
 mod config;
-mod geometry;
 mod measurement;
 mod trajectory;
 mod uncertainty;
 mod utils;
 
 pub use config::Config;
-pub use geometry::Point;
 pub use measurement::Measurement;
 pub use trajectory::Trajectory;
 pub use uncertainty::Uncertainty;

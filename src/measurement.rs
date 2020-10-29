@@ -1,12 +1,15 @@
-use crate::{Config, Point, Uncertainty};
+use crate::{utils, Config, Uncertainty};
+use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
 ///
 /// More than just a point, a `Measurement` contains system configuration and platform orientation information as well.
 #[derive(Debug)]
 pub struct Measurement {
-    las: Point,
-    gnss: Point,
+    las: Vector3<f64>,
+    gnss: Vector3<f64>,
+    imu: Matrix3<f64>,
+    ned_to_enu: Matrix3<f64>,
 }
 
 impl Measurement {
@@ -22,16 +25,10 @@ impl Measurement {
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
         Measurement {
-            las: Point {
-                x: las.x,
-                y: las.y,
-                z: las.z,
-            },
-            gnss: Point {
-                x: easting,
-                y: northing,
-                z: sbet.altitude,
-            },
+            las: Vector3::new(las.x, las.y, las.z),
+            gnss: Vector3::new(easting, northing, sbet.altitude),
+            imu: utils::rotation_matrix(sbet.roll, sbet.pitch, sbet.yaw),
+            ned_to_enu: Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.),
         }
     }
 
@@ -43,8 +40,20 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let point = measurements[0].las_point();
     /// ```
-    pub fn las_point(&self) -> Point {
+    pub fn las_point(&self) -> Vector3<f64> {
         self.las
+    }
+
+    /// Returns the las point in platform coordinates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let point = measurements[0].las_platform();
+    /// ```
+    pub fn las_platform(&self) -> Vector3<f64> {
+        self.imu.transpose() * self.ned_to_enu.transpose() * (self.las - self.gnss)
     }
 
     /// Returns this measurement's gnss point in projected coordinates.
@@ -55,7 +64,7 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let point = measurements[0].gnss_point();
     /// ```
-    pub fn gnss_point(&self) -> Point {
+    pub fn gnss_point(&self) -> Vector3<f64> {
         self.gnss
     }
 
