@@ -10,10 +10,12 @@
 //! let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
 //! ```
 
+mod config;
 mod measurement;
 mod trajectory;
 
 use anyhow::Error;
+pub use config::Config;
 pub use measurement::Measurement;
 use std::path::Path;
 pub use trajectory::Trajectory;
@@ -29,9 +31,10 @@ pub use trajectory::Trajectory;
 /// ```
 pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     sbet: P0,
-    las: P1,
+    _las: P1,
     config: P2,
 ) -> Result<Vec<Measurement>, Error> {
-    let trajectory = Trajectory::from_path(sbet)?;
+    let _trajectory = Trajectory::from_path(sbet)?;
+    let _config = Config::from_path(config)?;
     unimplemented!()
 }
