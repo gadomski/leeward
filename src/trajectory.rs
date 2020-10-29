@@ -1,6 +1,5 @@
 use crate::{Config, Measurement};
 use anyhow::{anyhow, Error};
-use sbet::Point;
 use std::{collections::HashMap, path::Path};
 
 /// Smoothed Best Estimate of a Trajectory (sbet)
@@ -9,7 +8,7 @@ use std::{collections::HashMap, path::Path};
 /// quick time-based access to points.
 #[derive(Debug)]
 pub struct Trajectory {
-    points: Vec<Point>,
+    points: Vec<sbet::Point>,
     scale: f64,
     index: HashMap<i64, usize>,
 }
@@ -26,7 +25,9 @@ impl Trajectory {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Trajectory, Error> {
         use sbet::Reader;
         let reader = Reader::from_path(path)?;
-        let points = reader.into_iter().collect::<Result<Vec<Point>, Error>>()?;
+        let points = reader
+            .into_iter()
+            .collect::<Result<Vec<sbet::Point>, Error>>()?;
         Trajectory::new(points)
     }
 
@@ -42,7 +43,7 @@ impl Trajectory {
     /// let points = vec![sbet::Point::default()];
     /// let trajectory = Trajectory::new(points);
     /// ```
-    pub fn new(points: Vec<Point>) -> Result<Trajectory, Error> {
+    pub fn new(points: Vec<sbet::Point>) -> Result<Trajectory, Error> {
         guess_scale(&points).map(|s| Trajectory::new_with_scale(points, s))
     }
 
@@ -55,7 +56,7 @@ impl Trajectory {
     /// let points = vec![sbet::Point::default()];
     /// let trajectory = Trajectory::new_with_scale(points, 1.0);
     /// ```
-    pub fn new_with_scale(points: Vec<Point>, scale: f64) -> Trajectory {
+    pub fn new_with_scale(points: Vec<sbet::Point>, scale: f64) -> Trajectory {
         Trajectory {
             index: points
                 .iter()
@@ -140,7 +141,7 @@ impl Trajectory {
     /// let trajectory = Trajectory::new_with_scale(points.clone(), 1.);
     /// assert_eq!(&points[0], trajectory.point(1.).unwrap());
     /// ```
-    pub fn point(&self, time: f64) -> Option<&Point> {
+    pub fn point(&self, time: f64) -> Option<&sbet::Point> {
         let time = self.time_as_integer(time);
         self.index
             .get(&time)
@@ -156,7 +157,7 @@ fn time_as_integer(time: f64, scale: f64) -> i64 {
     (time / scale).round() as i64
 }
 
-fn guess_scale(points: &[Point]) -> Result<f64, Error> {
+fn guess_scale(points: &[sbet::Point]) -> Result<f64, Error> {
     if points.len() < 2 {
         Err(anyhow!(
             "cannot guess scale with {} sbet points",

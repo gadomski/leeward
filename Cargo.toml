@@ -10,3 +10,7 @@ las = "0.7"
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
+
+[dev-dependencies]
+clap = "2.33"
+csv = "1.1"
