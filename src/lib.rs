@@ -31,10 +31,10 @@ pub use trajectory::Trajectory;
 /// ```
 pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     sbet: P0,
-    _las: P1,
+    las: P1,
     config: P2,
 ) -> Result<Vec<Measurement>, Error> {
-    let _trajectory = Trajectory::from_path(sbet)?;
-    let _config = Config::from_path(config)?;
-    unimplemented!()
+    let trajectory = Trajectory::from_path(sbet)?;
+    let config = Config::from_path(config)?;
+    trajectory.measurements(las, &config)
 }

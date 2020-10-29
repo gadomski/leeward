@@ -1,3 +1,4 @@
+use crate::{Config, Measurement};
 use anyhow::Error;
 use sbet::Point;
 use std::path::Path;
@@ -38,6 +39,24 @@ impl Trajectory {
     /// ```
     pub fn len(&self) -> usize {
         self.points.len()
+    }
+
+    /// Reads a las file and returns measurements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Config, Trajectory};
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let measurements = trajectory.measurements("data/points.las", &config).unwrap();
+    /// ```
+    pub fn measurements<P: AsRef<Path>>(
+        &self,
+        _path: P,
+        _config: &Config,
+    ) -> Result<Vec<Measurement>, Error> {
+        unimplemented!()
     }
 }
 
