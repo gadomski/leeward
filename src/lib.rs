@@ -13,12 +13,14 @@
 mod config;
 mod measurement;
 mod trajectory;
+mod uncertainty;
 
 use anyhow::Error;
 pub use config::Config;
 pub use measurement::Measurement;
 use std::path::Path;
 pub use trajectory::Trajectory;
+pub use uncertainty::Uncertainty;
 
 /// One-stop shop to create a vector of measurements from a trajectory file, point cloud file, and config file.
 ///
