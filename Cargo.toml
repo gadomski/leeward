@@ -3,29 +3,3 @@ name = "leeward"
 version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 edition = "2018"
-
-[features]
-default = ["capi"]
-capi = []
-
-[lib]
-crate-type = ["lib", "staticlib"]
-
-[dependencies]
-approx = "0.3"
-anyhow = "1.0"
-clap = { version = "2.33", features = ["yaml"] }
-csv = "1.1"
-indicatif = "0.15"
-las = "0.7"
-libc = "0.2"
-glob = "0.3"
-nalgebra = "0.22"
-sbet = { git = "https://github.com/gadomski/sbet-rs.git" }
-serde = { version = "1.0", features = ["derive"] }
-serde_derive = "1.0"
-toml = "0.5"
-utm = "0.1"
-
-[build-dependencies]
-cbindgen = "0.15"
