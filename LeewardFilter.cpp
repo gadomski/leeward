@@ -19,13 +19,13 @@ namespace pdal
         this->m_sigmaHorizontal = layout->registerOrAssignDim("SigmaHorizontal", Dimension::Type::Float);
         this->m_sigmaVertical = layout->registerOrAssignDim("SigmaVertical", Dimension::Type::Float);
         this->m_sigmaMagnitude = layout->registerOrAssignDim("SigmaMagnitude", Dimension::Type::Float);
+        this->m_incidenceAngle = layout->registerOrAssignDim("IncidenceAngle", Dimension::Type::Float);
     }
 
     void LeewardFilter::addArgs(ProgramArgs &args)
     {
         args.add("sbet_path", "Path to the sbet file", this->m_sbet_path);
         args.add("config_path", "Path to the sbet file", this->m_config_path);
-        args.add("quantization", "Increments of a second to which to quantize the trajectory", this->m_quantization, 100);
     }
 
     void LeewardFilter::filter(PointView &view)
@@ -38,7 +38,7 @@ namespace pdal
         {
             throw pdal_error("No config path provided, exiting...");
         }
-        auto leeward = leeward_new(this->m_sbet_path.c_str(), this->m_config_path.c_str(), this->m_quantization);
+        auto leeward = leeward_new(this->m_sbet_path.c_str(), this->m_config_path.c_str());
         if (!leeward)
         {
             throw pdal_error("Error when creating leeward, exiting...");
@@ -50,12 +50,16 @@ namespace pdal
             auto z = view.getFieldAs<double>(Dimension::Id::Z, id);
             auto scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
             auto gps_time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
-            auto tpu = leeward_tpu(leeward, x, y, z, scan_angle, gps_time);
+            auto nx = view.getFieldAs<float>(Dimension::Id::NormalX, id);
+            auto ny = view.getFieldAs<float>(Dimension::Id::NormalY, id);
+            auto nz = view.getFieldAs<float>(Dimension::Id::NormalZ, id);
+            auto tpu = leeward_tpu(leeward, x, y, z, scan_angle, gps_time, nx, ny, nz);
             view.setField(this->m_sigmaX, id, tpu->sigma_x);
             view.setField(this->m_sigmaY, id, tpu->sigma_y);
             view.setField(this->m_sigmaHorizontal, id, tpu->sigma_horizontal);
             view.setField(this->m_sigmaVertical, id, tpu->sigma_vertical);
             view.setField(this->m_sigmaMagnitude, id, tpu->sigma_magnitude);
+            view.setField(this->m_incidenceAngle, id, tpu->incidence_angle * 180 / M_PI);
             leeward_tpu_delete(tpu);
         }
         leeward_delete(leeward);

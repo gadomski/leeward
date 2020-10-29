@@ -19,11 +19,11 @@ namespace pdal
 
         std::string m_sbet_path;
         std::string m_config_path;
-        int m_quantization;
         Dimension::Id m_sigmaX;
         Dimension::Id m_sigmaY;
         Dimension::Id m_sigmaHorizontal;
         Dimension::Id m_sigmaVertical;
         Dimension::Id m_sigmaMagnitude;
+        Dimension::Id m_incidenceAngle;
     };
 } // namespace pdal
