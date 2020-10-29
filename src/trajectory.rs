@@ -1,5 +1,5 @@
 use crate::{Config, Measurement};
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use sbet::Point;
 use std::{collections::HashMap, path::Path};
 
@@ -38,11 +38,12 @@ impl Trajectory {
     /// # Examples
     ///
     /// ```
+    /// # use leeward::Trajectory;
     /// let points = vec![sbet::Point::default()];
     /// let trajectory = Trajectory::new(points);
     /// ```
     pub fn new(points: Vec<Point>) -> Result<Trajectory, Error> {
-        unimplemented!()
+        guess_scale(&points).map(|s| Trajectory::new_with_scale(points, s))
     }
 
     /// Creates a new trajectory with the provided points and index scale.
@@ -50,8 +51,9 @@ impl Trajectory {
     /// # Examples
     ///
     /// ```
+    /// # use leeward::Trajectory;
     /// let points = vec![sbet::Point::default()];
-    /// let trajectory = Trajectory::new_with_scale(points, scale);
+    /// let trajectory = Trajectory::new_with_scale(points, 1.0);
     /// ```
     pub fn new_with_scale(points: Vec<Point>, scale: f64) -> Trajectory {
         Trajectory {
@@ -76,6 +78,14 @@ impl Trajectory {
     /// ```
     pub fn len(&self) -> usize {
         self.points.len()
+    }
+
+    /// Returns this trajectory's scale factor.
+    ///
+    /// The scale factor is used by the internal trajectory index.
+    /// A good scale that allows access to all points via the index (provided the points are evenly spaced) is the time spacing of the points, e.g. if each point is 10 milliseconds apart, the scale should be 0.01.
+    pub fn scale(&self) -> f64 {
+        self.scale
     }
 
     /// Reads a las file and returns measurements.
@@ -125,9 +135,10 @@ impl Trajectory {
     /// # Examples
     ///
     /// ```
+    /// # use leeward::Trajectory;
     /// let points = vec![sbet::Point { time: 1., ..Default::default() }];
     /// let trajectory = Trajectory::new_with_scale(points.clone(), 1.);
-    /// assert_eq!(points[0], trajectory.point(1.).unwrap());
+    /// assert_eq!(&points[0], trajectory.point(1.).unwrap());
     /// ```
     pub fn point(&self, time: f64) -> Option<&Point> {
         let time = self.time_as_integer(time);
@@ -145,6 +156,28 @@ fn time_as_integer(time: f64, scale: f64) -> i64 {
     (time / scale).round() as i64
 }
 
+fn guess_scale(points: &[Point]) -> Result<f64, Error> {
+    if points.len() < 2 {
+        Err(anyhow!(
+            "cannot guess scale with {} sbet points",
+            points.len()
+        ))
+    } else {
+        let mut sum = 0.;
+        for (a, b) in points.iter().zip(points.iter().skip(1)) {
+            if b.time <= a.time {
+                return Err(anyhow!(
+                    "sbet times do not increase monatonically: first={}, second={}",
+                    a.time,
+                    b.time
+                ));
+            }
+            sum += b.time - a.time;
+        }
+        Ok(sum / (points.len() - 1) as f64)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Trajectory;
@@ -153,6 +186,7 @@ mod tests {
     fn from_path() {
         let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
         assert_eq!(200, trajectory.len());
+        assert!((0.005 - trajectory.scale()) < 0.0001);
     }
 
     #[test]
