@@ -58,6 +58,13 @@ fn main() {
                 .required(true)
                 .index(3),
         )
+        .arg(
+            Arg::with_name("decimate")
+                .help("decimate")
+                .takes_value(true)
+                .short("d")
+                .long("decimate"),
+        )
         .get_matches();
     let measurements = leeward::measurements(
         matches.value_of("sbet").unwrap(),
@@ -65,9 +72,14 @@ fn main() {
         matches.value_of("config").unwrap(),
     )
     .unwrap();
+    let step_by = matches
+        .value_of("decimate")
+        .unwrap_or_else(|| "1")
+        .parse()
+        .unwrap();
 
     let mut writer = Writer::from_writer(io::stdout());
-    for measurement in &measurements {
+    for measurement in measurements.iter().step_by(step_by) {
         let measurement = CsvMeasurement::from(measurement);
         writer.serialize(measurement).unwrap();
     }
