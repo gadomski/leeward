@@ -193,7 +193,7 @@ impl Measurement {
     /// ```
     /// # use leeward::{Dimension, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial = measurement[0].partial((Dimension::X, Variable::ScanAngle));
+    /// let partial = measurements[0].partial((Dimension::X, Variable::ScanAngle));
     /// ```
     pub fn partial<P: Into<Partial>>(&self, partial: P) -> f64 {
         use crate::{Dimension, Variable};
