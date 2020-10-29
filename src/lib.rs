@@ -10,7 +10,7 @@
 //! let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
 //! ```
 
-mod config;
+pub mod config;
 mod measurement;
 mod trajectory;
 mod uncertainty;

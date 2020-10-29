@@ -17,6 +17,9 @@ struct CsvMeasurement {
     gnss_x: f64,
     gnss_y: f64,
     gnss_z: f64,
+    calculated_x: f64,
+    calculated_y: f64,
+    calculated_z: f64,
 }
 
 impl From<&Measurement> for CsvMeasurement {
@@ -24,6 +27,7 @@ impl From<&Measurement> for CsvMeasurement {
         let las = measurement.las_point();
         let las_platform = measurement.las_platform();
         let gnss = measurement.gnss_point();
+        let calculated = measurement.calculated();
         CsvMeasurement {
             las_x: las.x,
             las_y: las.y,
@@ -34,6 +38,9 @@ impl From<&Measurement> for CsvMeasurement {
             gnss_x: gnss.x,
             gnss_y: gnss.y,
             gnss_z: gnss.z,
+            calculated_x: calculated.x,
+            calculated_y: calculated.y,
+            calculated_z: calculated.z,
         }
     }
 }

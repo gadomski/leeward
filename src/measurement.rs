@@ -10,6 +10,8 @@ pub struct Measurement {
     gnss: Vector3<f64>,
     imu: Matrix3<f64>,
     ned_to_enu: Matrix3<f64>,
+    boresight: Matrix3<f64>,
+    lever_arm: Vector3<f64>,
 }
 
 impl Measurement {
@@ -24,11 +26,14 @@ impl Measurement {
     pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
+        let boresight = config.boresight.to_rotation_matrix();
         Measurement {
             las: Vector3::new(las.x, las.y, las.z),
             gnss: Vector3::new(easting, northing, sbet.altitude),
             imu: utils::rotation_matrix(sbet.roll, sbet.pitch, sbet.yaw),
             ned_to_enu: Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.),
+            boresight,
+            lever_arm: config.lever_arm,
         }
     }
 
@@ -66,6 +71,56 @@ impl Measurement {
     /// ```
     pub fn gnss_point(&self) -> Vector3<f64> {
         self.gnss
+    }
+
+    /// Returns the measured point as calculated through the lidar equation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let point = measurements[0].gnss_point();
+    /// ```
+    pub fn calculated(&self) -> Vector3<f64> {
+        self.gnss + self.imu * (self.boresight * self.scanner() - self.lever_arm)
+    }
+
+    /// Returns the measured point in the scanner's coordinate system.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let point = measurements[0].scanner();
+    /// ```
+    pub fn scanner(&self) -> Vector3<f64> {
+        let range = self.range();
+        let scan_angle = self.scan_angle();
+        Vector3::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
+    }
+
+    /// Returns this measurement's range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let range = measurements[0].range();
+    /// ```
+    pub fn range(&self) -> f64 {
+        unimplemented!()
+    }
+
+    /// Returns this measurement's scan angle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let scan_angle = measurements[0].scan_angle();
+    /// ```
+    pub fn scan_angle(&self) -> f64 {
+        unimplemented!()
     }
 
     /// Returns the uncertainty structure for this measurement.

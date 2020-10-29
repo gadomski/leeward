@@ -1,9 +1,6 @@
 utm_zone = 11
 
-[lever_arm]
-x = 0.0
-y = 0.0
-z = 0.0
+lever_arm = [0, 0, 0]
 
 [boresight]
 roll = -1.564223792883843
