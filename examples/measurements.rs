@@ -80,7 +80,7 @@ impl From<&Measurement> for CsvMeasurement {
 }
 
 fn main() {
-    let matches = App::new("leeward-measurements")
+    let matches = App::new("measurements")
         .arg(
             Arg::with_name("sbet")
                 .help("sbet file")
