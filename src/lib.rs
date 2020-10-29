@@ -55,6 +55,6 @@ pub fn read_las<P: AsRef<Path>>(path: P) -> Result<Vec<las::Point>, Error> {
     let mut reader = Reader::from_path(path)?;
     reader
         .points()
-        .map(|result| result.map_err(|e| Error::from(e)))
+        .map(|result| result.map_err(Error::from))
         .collect()
 }

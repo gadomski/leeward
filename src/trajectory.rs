@@ -62,7 +62,7 @@ impl Trajectory {
             .points()
             .map(|result| {
                 result
-                    .map_err(|e| Error::from(e))
+                    .map_err(Error::from)
                     .and_then(|point| self.measurement(&point, config))
             })
             .collect()
