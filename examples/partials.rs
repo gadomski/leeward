@@ -45,21 +45,24 @@ fn main() {
     let mut reader = Reader::from_path(matches.value_of("las").unwrap()).unwrap();
     let mut writer = Writer::from_writer(io::stdout());
     let mut header = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
-    header.extend(Partial::all().into_iter().map(|p| p.to_string()));
+    for partial in Partial::all() {
+        header.push(format!("{} analytical", partial));
+        header.push(format!("{} numerical", partial));
+    }
     writer.write_record(header).unwrap();
     for result in reader.points().step_by(step_by) {
         let las = result.unwrap();
         let measurement = trajectory.measurement(&las, &config).unwrap();
         let las_point = measurement.las_point();
-        let mut record = vec![las_point.x, las_point.y, las_point.z];
-        record.extend(Partial::all().into_iter().map(|p| measurement.partial(p)));
-        writer
-            .write_record(
-                record
-                    .into_iter()
-                    .map(|n| n.to_string())
-                    .collect::<Vec<String>>(),
-            )
-            .unwrap();
+        let mut record = vec![
+            las_point.x.to_string(),
+            las_point.y.to_string(),
+            las_point.z.to_string(),
+        ];
+        for partial in Partial::all() {
+            record.push(measurement.partial(partial).to_string());
+            record.push(measurement.finite_difference(partial).to_string());
+        }
+        writer.write_record(record).unwrap();
     }
 }

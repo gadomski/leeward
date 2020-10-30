@@ -96,6 +96,28 @@ impl Variable {
             Variable::GnssZ,
         ]
     }
+
+    /// Returns true if this variable is an angle, false if not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Variable;
+    /// assert!(Variable::BoresightRoll.is_angle());
+    /// assert!(!Variable::LeverArmX.is_angle());
+    /// ```
+    pub fn is_angle(&self) -> bool {
+        match *self {
+            Variable::ScanAngle
+            | Variable::BoresightRoll
+            | Variable::BoresightPitch
+            | Variable::BoresightYaw
+            | Variable::ImuRoll
+            | Variable::ImuPitch
+            | Variable::ImuYaw => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for Variable {

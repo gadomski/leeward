@@ -381,4 +381,39 @@ impl Measurement {
             (Dimension::Z, Variable::LeverArmZ) => cp * cr,
         }
     }
+
+    /// Returns the partial derivative as determined by numerical differentiation via the finite difference method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Dimension, Variable};
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let partial = measurements[0].finite_difference((Dimension::X, Variable::ScanAngle));
+    /// ```
+    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> f64 {
+        let (dimension, variable) = partial.into();
+        let h = if variable.is_angle() {
+            // TODO make these configurable
+            1.745329e-5
+        } else {
+            0.001
+        };
+        let positive = self.adjust(variable, h);
+        let negative = self.adjust(variable, -h);
+        (positive.value(dimension) - negative.value(dimension)) / h
+    }
+
+    fn adjust(&self, _variable: Variable, _delta: f64) -> Measurement {
+        unimplemented!()
+    }
+
+    fn value(&self, dimension: Dimension) -> f64 {
+        let calculated = self.calculated();
+        match dimension {
+            Dimension::X => calculated.x,
+            Dimension::Y => calculated.y,
+            Dimension::Z => calculated.z,
+        }
+    }
 }
