@@ -47,7 +47,9 @@ fn main() {
     let mut header = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
     for partial in Partial::all() {
         header.push(format!("{} analytical", partial));
-        header.push(format!("{} numerical", partial));
+        if !partial.is_derived() {
+            header.push(format!("{} numerical", partial));
+        }
     }
     writer.write_record(header).unwrap();
     for result in reader.points().step_by(step_by) {
@@ -61,7 +63,9 @@ fn main() {
         ];
         for partial in Partial::all() {
             record.push(measurement.partial(partial).to_string());
-            record.push(measurement.finite_difference(partial).to_string());
+            if let Some(value) = measurement.finite_difference(partial) {
+                record.push(value.to_string());
+            }
         }
         writer.write_record(record).unwrap();
     }

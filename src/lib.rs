@@ -13,11 +13,13 @@
 pub mod config;
 mod measurement;
 mod partial;
+mod rotation;
 mod trajectory;
 mod utils;
 
 pub use config::Config;
 pub use measurement::{Measurement, Uncertainty};
 pub use partial::{Dimension, Partial, Variable};
+pub use rotation::Rotation;
 pub use trajectory::Trajectory;
 pub use utils::{measurements, read_las};

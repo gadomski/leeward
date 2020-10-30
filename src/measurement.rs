@@ -1,4 +1,4 @@
-use crate::{utils, Config, Dimension, Variable};
+use crate::{Config, Dimension, Rotation, Variable};
 use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
@@ -8,33 +8,16 @@ use nalgebra::{Matrix3, Vector3};
 pub struct Measurement {
     las: Vector3<f64>,
     gnss: Vector3<f64>,
-    imu: Matrix3<f64>,
+    imu: Rotation,
     ned_to_enu: Matrix3<f64>,
-    boresight: Matrix3<f64>,
+    boresight: Rotation,
     lever_arm: Vector3<f64>,
-    trig: Trig,
 }
 
 /// Measurement uncertainty.
 #[derive(Debug)]
 pub struct Uncertainty {
     covariance: Matrix3<f64>,
-}
-
-#[derive(Debug)]
-struct Trig {
-    cr: f64,
-    sr: f64,
-    cp: f64,
-    sp: f64,
-    cy: f64,
-    sy: f64,
-    cbr: f64,
-    sbr: f64,
-    cbp: f64,
-    sbp: f64,
-    cby: f64,
-    sby: f64,
 }
 
 impl Measurement {
@@ -49,28 +32,40 @@ impl Measurement {
     pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
-        let boresight = config.boresight.to_rotation_matrix();
+        let las = Vector3::new(las.x, las.y, las.z);
+        let gnss = Vector3::new(easting, northing, sbet.altitude);
+        let imu = Rotation::new(sbet.roll, sbet.pitch, sbet.yaw);
+        Measurement::new_from_parts(las, gnss, imu, config.boresight, config.lever_arm)
+    }
+
+    /// Creates a new measurement from the basic parts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Measurement, Rotation};
+    /// # use nalgebra::Vector3;
+    /// let las = Vector3::new(1., 2., 3.);
+    /// let gnss = Vector3::new(4., 5., 6.);
+    /// let imu = Rotation::new(0., 0., 0.);
+    /// let boresight = Rotation::new(0., 0., 0.);
+    /// let lever_arm = Vector3::new(1., 2., 3.);
+    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm);
+    /// ```
+    pub fn new_from_parts(
+        las: Vector3<f64>,
+        gnss: Vector3<f64>,
+        imu: Rotation,
+        boresight: Rotation,
+        lever_arm: Vector3<f64>,
+    ) -> Measurement {
         Measurement {
-            las: Vector3::new(las.x, las.y, las.z),
-            gnss: Vector3::new(easting, northing, sbet.altitude),
-            imu: utils::rotation_matrix(sbet.roll, sbet.pitch, sbet.yaw),
+            las,
+            gnss,
+            imu,
             ned_to_enu: Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.),
             boresight,
-            lever_arm: config.lever_arm,
-            trig: Trig {
-                cr: sbet.roll.cos(),
-                sr: sbet.roll.sin(),
-                cp: sbet.pitch.cos(),
-                sp: sbet.pitch.sin(),
-                cy: sbet.yaw.cos(),
-                sy: sbet.yaw.sin(),
-                cbr: config.boresight.roll.cos(),
-                sbr: config.boresight.roll.sin(),
-                cbp: config.boresight.pitch.cos(),
-                sbp: config.boresight.pitch.sin(),
-                cby: config.boresight.yaw.cos(),
-                sby: config.boresight.yaw.sin(),
-            },
+            lever_arm,
         }
     }
 
@@ -95,7 +90,9 @@ impl Measurement {
     /// let point = measurements[0].las_platform();
     /// ```
     pub fn las_platform(&self) -> Vector3<f64> {
-        self.imu.transpose() * self.ned_to_enu.transpose() * (self.las - self.gnss)
+        self.imu.to_rotation_matrix().transpose()
+            * self.ned_to_enu.transpose()
+            * (self.las - self.gnss)
     }
 
     /// Returns this measurement's gnss point in projected coordinates.
@@ -119,7 +116,10 @@ impl Measurement {
     /// let point = measurements[0].gnss_point();
     /// ```
     pub fn calculated(&self) -> Vector3<f64> {
-        self.gnss + self.ned_to_enu * self.imu * (self.boresight * self.scanner() - self.lever_arm)
+        self.gnss
+            + self.ned_to_enu
+                * self.imu.to_rotation_matrix()
+                * (self.boresight.to_rotation_matrix() * self.scanner() - self.lever_arm)
     }
 
     /// Returns the measured point as calculated through the lidar equation, in platform coordinates.
@@ -131,7 +131,7 @@ impl Measurement {
     /// let point = measurements[0].calculated_platform();
     /// ```
     pub fn calculated_platform(&self) -> Vector3<f64> {
-        self.boresight * self.scanner() - self.lever_arm
+        self.boresight.to_rotation_matrix() * self.scanner() - self.lever_arm
     }
 
     /// Returns the measured point in the scanner's coordinate system.
@@ -169,15 +169,17 @@ impl Measurement {
     /// let scan_angle = measurements[0].scan_angle();
     /// ```
     pub fn scan_angle(&self) -> f64 {
-        ((self.boresight.transpose() * (self.lever_arm + self.las_platform())).z / self.range())
-            .asin()
+        ((self.boresight.to_rotation_matrix().transpose() * (self.lever_arm + self.las_platform()))
+            .z
+            / self.range())
+        .asin()
     }
 
     /// Returns this measurement's scanner origin in global coordinates.
     ///
     /// Lever arm.
     pub fn scanner_origin(&self) -> Vector3<f64> {
-        self.gnss + self.ned_to_enu * self.imu * (-self.lever_arm)
+        self.gnss + self.ned_to_enu * self.imu.to_rotation_matrix() * (-self.lever_arm)
     }
 
     /// Returns the uncertainty structure for this measurement.
@@ -218,18 +220,18 @@ impl Measurement {
     /// let partial = measurements[0].partial((Dimension::X, Variable::ScanAngle));
     /// ```
     pub fn partial<P: Into<(Dimension, Variable)>>(&self, partial: P) -> f64 {
-        let cr = self.trig.cr;
-        let sr = self.trig.sr;
-        let cp = self.trig.cp;
-        let sp = self.trig.sp;
-        let cy = self.trig.cy;
-        let sy = self.trig.sy;
-        let cbr = self.trig.cbr;
-        let sbr = self.trig.sbr;
-        let cbp = self.trig.cbp;
-        let sbp = self.trig.sbp;
-        let cby = self.trig.cby;
-        let sby = self.trig.sby;
+        let cr = self.imu.roll.cos();
+        let sr = self.imu.roll.sin();
+        let cp = self.imu.pitch.cos();
+        let sp = self.imu.pitch.sin();
+        let cy = self.imu.yaw.cos();
+        let sy = self.imu.yaw.sin();
+        let cbr = self.boresight.roll.cos();
+        let sbr = self.boresight.roll.sin();
+        let cbp = self.boresight.pitch.cos();
+        let sbp = self.boresight.pitch.sin();
+        let cby = self.boresight.yaw.cos();
+        let sby = self.boresight.yaw.sin();
         let scan_angle = self.scan_angle();
         let ca = scan_angle.cos();
         let sa = scan_angle.sin();
@@ -384,28 +386,92 @@ impl Measurement {
 
     /// Returns the partial derivative as determined by numerical differentiation via the finite difference method.
     ///
+    /// Returns `None` if the variable is a derived value, e.g. range which is derived from the position of the las point and the scanner origin.
+    ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::{Dimension, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial = measurements[0].finite_difference((Dimension::X, Variable::ScanAngle));
+    /// let partial = measurements[0].finite_difference((Dimension::X, Variable::LeverArmX)).unwrap();
     /// ```
-    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> f64 {
+    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Option<f64> {
         let (dimension, variable) = partial.into();
-        let h = if variable.is_angle() {
-            // TODO make these configurable
-            1.745329e-5
+        let h = f64::EPSILON.sqrt() * 100.;
+        if let Some((positive, negative)) = self
+            .adjust(variable, h)
+            .and_then(|p| self.adjust(variable, -h).map(|n| (p, n)))
+        {
+            Some((positive.value(dimension) - negative.value(dimension)) / (2.0 * h))
         } else {
-            0.001
-        };
-        let positive = self.adjust(variable, h);
-        let negative = self.adjust(variable, -h);
-        (positive.value(dimension) - negative.value(dimension)) / h
+            None
+        }
     }
 
-    fn adjust(&self, _variable: Variable, _delta: f64) -> Measurement {
-        unimplemented!()
+    fn with_new_boresight(&self, boresight: Rotation) -> Measurement {
+        Measurement::new_from_parts(self.las, self.gnss, self.imu, boresight, self.lever_arm)
+    }
+
+    fn with_new_imu(&self, imu: Rotation) -> Measurement {
+        Measurement::new_from_parts(self.las, self.gnss, imu, self.boresight, self.lever_arm)
+    }
+
+    fn with_new_lever_arm(&self, lever_arm: Vector3<f64>) -> Measurement {
+        Measurement::new_from_parts(self.las, self.gnss, self.imu, self.boresight, lever_arm)
+    }
+
+    fn with_new_gnss(&self, gnss: Vector3<f64>) -> Measurement {
+        Measurement::new_from_parts(self.las, gnss, self.imu, self.boresight, self.lever_arm)
+    }
+
+    fn adjust(&self, variable: Variable, delta: f64) -> Option<Measurement> {
+        match variable {
+            Variable::Range | Variable::ScanAngle => None,
+            Variable::BoresightRoll => {
+                Some(self.with_new_boresight(self.boresight.with_roll(self.boresight.roll + delta)))
+            }
+            Variable::BoresightPitch => Some(
+                self.with_new_boresight(self.boresight.with_pitch(self.boresight.pitch + delta)),
+            ),
+            Variable::BoresightYaw => {
+                Some(self.with_new_boresight(self.boresight.with_yaw(self.boresight.yaw + delta)))
+            }
+            Variable::ImuRoll => Some(self.with_new_imu(self.imu.with_roll(self.imu.roll + delta))),
+            Variable::ImuPitch => {
+                Some(self.with_new_imu(self.imu.with_pitch(self.imu.pitch + delta)))
+            }
+            Variable::ImuYaw => Some(self.with_new_imu(self.imu.with_yaw(self.imu.yaw + delta))),
+            Variable::LeverArmX => Some(self.with_new_lever_arm(Vector3::new(
+                self.lever_arm.x + delta,
+                self.lever_arm.y,
+                self.lever_arm.z,
+            ))),
+            Variable::LeverArmY => Some(self.with_new_lever_arm(Vector3::new(
+                self.lever_arm.x,
+                self.lever_arm.y + delta,
+                self.lever_arm.z,
+            ))),
+            Variable::LeverArmZ => Some(self.with_new_lever_arm(Vector3::new(
+                self.lever_arm.x,
+                self.lever_arm.y,
+                self.lever_arm.z + delta,
+            ))),
+            Variable::GnssX => Some(self.with_new_gnss(Vector3::new(
+                self.gnss.x + delta,
+                self.gnss.y,
+                self.gnss.z,
+            ))),
+            Variable::GnssY => Some(self.with_new_gnss(Vector3::new(
+                self.gnss.x,
+                self.gnss.y + delta,
+                self.gnss.z,
+            ))),
+            Variable::GnssZ => Some(self.with_new_gnss(Vector3::new(
+                self.gnss.x,
+                self.gnss.y,
+                self.gnss.z + delta,
+            ))),
+        }
     }
 
     fn value(&self, dimension: Dimension) -> f64 {

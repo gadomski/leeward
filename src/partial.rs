@@ -2,7 +2,7 @@ use std::fmt;
 
 /// A partial derivative.
 #[derive(Debug, Clone, Copy)]
-pub struct Partial(Dimension, Variable);
+pub struct Partial(pub Dimension, pub Variable);
 
 /// A dimension, as used for partial derivatives.
 #[derive(Debug, Clone, Copy)]
@@ -48,6 +48,19 @@ impl Partial {
             }
         }
         all
+    }
+
+    /// Returns true if this partial is a derived value (e.g. range or scan angle).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Partial, Variable, Dimension};
+    /// assert!(Partial(Dimension::X, Variable::ScanAngle).is_derived());
+    /// assert!(!Partial(Dimension::X, Variable::LeverArmX).is_derived());
+    /// ```
+    pub fn is_derived(&self) -> bool {
+        self.1.is_derived()
     }
 }
 
@@ -115,6 +128,22 @@ impl Variable {
             | Variable::ImuRoll
             | Variable::ImuPitch
             | Variable::ImuYaw => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this variable is a derived value (e.g. range or scan angle).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Variable;
+    /// assert!(Variable::ScanAngle.is_derived());
+    /// assert!(!Variable::LeverArmX.is_derived());
+    /// ```
+    pub fn is_derived(&self) -> bool {
+        match *self {
+            Variable::ScanAngle | Variable::Range => true,
             _ => false,
         }
     }
