@@ -1,5 +1,5 @@
 use nalgebra::Matrix3;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Converts this rotation into a matrix following yaw, pitch, roll rotations.
 ///
@@ -26,7 +26,7 @@ pub fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
 }
 
 /// Rotation as defined by a roll, pitch, and yaw.
-#[derive(Debug, Deserialize, Default, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct Rotation {
     pub roll: f64,
     pub pitch: f64,

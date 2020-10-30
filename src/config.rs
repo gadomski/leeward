@@ -5,11 +5,11 @@
 use crate::Rotation;
 use anyhow::Error;
 use nalgebra::Vector3;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// System and platform configuration.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct Config {
     pub utm_zone: u8,
     pub boresight: Rotation,

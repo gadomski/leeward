@@ -408,6 +408,25 @@ impl Measurement {
         }
     }
 
+    /// Creates a new measurement with a new config.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Config;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let measurement = measurements[0].with_new_config(&Config::default());
+    /// ```
+    pub fn with_new_config(&self, config: &Config) -> Measurement {
+        Measurement::new_from_parts(
+            self.las,
+            self.gnss,
+            self.imu,
+            config.boresight,
+            config.lever_arm,
+        )
+    }
+
     fn with_new_boresight(&self, boresight: Rotation) -> Measurement {
         Measurement::new_from_parts(self.las, self.gnss, self.imu, boresight, self.lever_arm)
     }
