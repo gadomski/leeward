@@ -1,4 +1,4 @@
-use crate::{utils, Config, Partial, Uncertainty};
+use crate::{utils, Config, Dimension, Variable};
 use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
@@ -13,6 +13,12 @@ pub struct Measurement {
     boresight: Matrix3<f64>,
     lever_arm: Vector3<f64>,
     trig: Trig,
+}
+
+/// Measurement uncertainty.
+#[derive(Debug)]
+pub struct Uncertainty {
+    covariance: Matrix3<f64>,
 }
 
 #[derive(Debug)]
@@ -183,7 +189,23 @@ impl Measurement {
     /// let uncertainty = measurements[0].uncertainty();
     /// ```
     pub fn uncertainty(&self) -> Uncertainty {
-        Uncertainty {}
+        use nalgebra::{MatrixMN, MatrixN, U14, U3};
+
+        let mut jacobian = MatrixMN::<f64, U3, U14>::zeros();
+        let mut errors = MatrixN::<f64, U14>::zeros();
+        for (col, variable) in Variable::all().into_iter().enumerate() {
+            for (row, dimension) in Dimension::all().into_iter().enumerate() {
+                jacobian[(row, col)] = self.partial((dimension, variable));
+            }
+            errors[(col, col)] = self.error(variable).powi(2);
+        }
+        let covariance = &jacobian * errors * jacobian.transpose();
+        Uncertainty { covariance }
+    }
+
+    /// Returns this measurement's error for the given variable.
+    pub fn error(&self, _variable: Variable) -> f64 {
+        unimplemented!()
     }
 
     /// Returns the partial derivative of this measurement.
@@ -195,8 +217,7 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let partial = measurements[0].partial((Dimension::X, Variable::ScanAngle));
     /// ```
-    pub fn partial<P: Into<Partial>>(&self, partial: P) -> f64 {
-        use crate::{Dimension, Variable};
+    pub fn partial<P: Into<(Dimension, Variable)>>(&self, partial: P) -> f64 {
         let cr = self.trig.cr;
         let sr = self.trig.sr;
         let cp = self.trig.cp;
@@ -216,7 +237,6 @@ impl Measurement {
         let lx = self.lever_arm.x;
         let ly = self.lever_arm.y;
         let lz = self.lever_arm.z;
-        let partial: Partial = partial.into();
         match partial.into() {
             (Dimension::X, Variable::GnssX) => 1.,
             (Dimension::Y, Variable::GnssX) => 0.,

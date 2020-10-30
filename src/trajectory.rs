@@ -105,8 +105,7 @@ impl Trajectory {
         config: &Config,
     ) -> Result<Vec<Measurement>, Error> {
         use las::{Read, Reader};
-        let mut reader = Reader::from_path(path)?;
-        reader
+        Reader::from_path(path)?
             .points()
             .map(|result| {
                 result

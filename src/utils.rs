@@ -35,8 +35,7 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
 /// ```
 pub fn read_las<P: AsRef<Path>>(path: P) -> Result<Vec<las::Point>, Error> {
     use las::{Read, Reader};
-    let mut reader = Reader::from_path(path)?;
-    reader
+    Reader::from_path(path)?
         .points()
         .map(|result| result.map_err(Error::from))
         .collect()
