@@ -51,9 +51,6 @@ fn main() {
         Variable::BoresightRoll,
         Variable::BoresightPitch,
         Variable::BoresightYaw,
-        Variable::LeverArmX,
-        Variable::LeverArmY,
-        Variable::LeverArmZ,
     ];
 
     let mut residuals = calculate_residuals(&measurements);
@@ -73,16 +70,19 @@ fn main() {
         let new_measurements = update_measurements(&measurements, &new_config);
         let new_residuals = calculate_residuals(&new_measurements);
         let new_rmse = new_residuals.norm();
-        if new_rmse < rmse {
+        if new_rmse > rmse {
+            println!("\nrmse increased to {}, done", new_rmse);
+            break;
+        } else if (rmse - new_rmse) / rmse < 1e-6 {
+            println!("\nrmse change less than {}, done", 1e-6);
+            break;
+        } else {
             residuals = new_residuals;
             rmse = new_rmse;
             measurements = new_measurements;
             config = new_config;
             iter += 1;
             println!("");
-        } else {
-            println!("\nrmse increased to {}, done", new_rmse);
-            break;
         }
     }
     println!("{}", toml::to_string_pretty(&config).unwrap());

@@ -12,8 +12,8 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct Config {
     pub utm_zone: u8,
-    pub boresight: Rotation,
     pub lever_arm: Vector3<f64>,
+    pub boresight: Rotation,
 }
 
 impl Config {
