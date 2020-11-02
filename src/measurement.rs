@@ -4,7 +4,7 @@ use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
 ///
-/// More than just a point, a `Measurement` contains system configuration and platform orientation information as well.
+/// More than just a point, a `Measurement` contains system configuration and platform orientation.
 #[derive(Clone, Debug)]
 pub struct Measurement {
     lidar: Lidar,
@@ -18,27 +18,27 @@ pub struct Measurement {
 /// For now, this is almost always derived from a las point, but it doesn't have to be.
 #[derive(Clone, Debug)]
 pub struct Lidar {
-    x: f64,
-    y: f64,
-    z: f64,
-    scan_angle: Option<f64>,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub scan_angle: Option<f64>,
 }
 
 /// A gnss+ins measurement.
 #[derive(Clone, Debug)]
 pub struct Platform {
-    x: f64,
-    y: f64,
-    z: f64,
-    roll: f64,
-    pitch: f64,
-    yaw: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub roll: f64,
+    pub pitch: f64,
+    pub yaw: f64,
 }
 
 /// Measurement uncertainty.
 #[derive(Debug)]
 pub struct Uncertainty {
-    covariance: Matrix3<f64>,
+    pub covariance: Matrix3<f64>,
 }
 
 /// A trait implemented by things that can be turned into a projected (UTM) Gnss+Ins measurement.
@@ -85,7 +85,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::{Config, measurement::Lidar};
+    /// # use leeward::Config;
     /// let measurement = Measurement::default();
     /// let new_config = Config { derive_scan_angle: false, ..Default::default() };
     /// measurement.set_config(new_config);
@@ -115,7 +115,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::Lidar;
+    /// use leeward::Lidar;
     /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
     /// let measurement = lidar.to_measurement();
     /// let point = measurement.measured_point();
@@ -132,7 +132,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::Platform;
+    /// use leeward::Platform;
     /// let platform = Platform { x: 1., y: 2., z: 3., roll: 0., pitch: 0., yaw: 0. };
     /// let measurement = platform.to_measurement();
     /// let gnss = measurement.gnss();
@@ -149,7 +149,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::Platform;
+    /// use leeward::Platform;
     /// let platform = Platform { x: 0., y: 0., z: 0., roll: 0., pitch: 0., yaw: std::f64::consts::PI };
     /// let measurement = platform.to_measurement();
     /// let imu = measurement.imu();
@@ -164,7 +164,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::{Lidar, Platform};
+    /// use leeward::{Lidar, Platform};
     /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
     /// let platform = Platform { x: 1., y: 2., z: 4., roll: 0., pitch: 0., yaw: 0. };
     /// let measurement = Measurement::new(lidar, platform, Default::default());
@@ -182,7 +182,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::{Lidar, Platform};
+    /// use leeward::{Lidar, Platform};
     /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
     /// let platform = Platform { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
     /// let measurement = Measurement::new(lidar, platform, Default::default());
@@ -283,7 +283,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use leeward::measurement::{Lidar, GnssIns};
+    /// use leeward::{Lidar, GnssIns};
     /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
     /// let platform = GnssIns::Projected { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
     /// let measurement = Measurement::new(lidar, platform, Default::default());
@@ -301,10 +301,7 @@ impl Measurement {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let uncertainty = measurements[0].uncertainty();
-    /// ```
+    /// FIXME
     pub fn uncertainty(&self) -> Result<Uncertainty, Error> {
         use nalgebra::{MatrixMN, MatrixN, U14, U3};
 
@@ -537,7 +534,7 @@ impl Measurement {
         unimplemented!()
     }
 
-    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Option<f64> {
+    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, _partial: P) -> Option<f64> {
         unimplemented!()
     }
 

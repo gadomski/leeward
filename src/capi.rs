@@ -1,7 +1,7 @@
 //! Leeward's C API.
 
 use crate::{Config, Measurement, Trajectory};
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use libc::c_char;
 use nalgebra::Vector3;
 use std::{ffi::CStr, ptr};
@@ -16,20 +16,21 @@ pub struct Leeward {
 /// A point structure.
 #[repr(C)]
 #[derive(Debug)]
-pub struct LasPoint {
-    x: f64,
-    y: f64,
-    z: f64,
-    gps_time: f64,
+pub struct Lidar {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub scan_angle: f64,
+    pub time: f64,
 }
 
 /// A vector.
 #[repr(C)]
 #[derive(Debug)]
 pub struct Normal {
-    x: f64,
-    y: f64,
-    z: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 /// Structure containting information about the uncertainty calculation.
@@ -38,16 +39,29 @@ pub struct Normal {
 pub struct Uncertainty {}
 
 impl Leeward {
-    fn measurement(&self, las: &LasPoint) -> Result<Measurement, Error> {
-        let _point = Vector3::new(las.x, las.y, las.z);
-        let _time = las.gps_time;
-        unimplemented!()
+    fn measurement(&self, lidar: &Lidar) -> Result<Measurement, Error> {
+        let sbet = self
+            .trajectory
+            .point(lidar.time)
+            .ok_or_else(|| anyhow!("no sbet point found for time: {}", lidar.time))?;
+        Ok(Measurement::new(lidar, sbet, self.config))
     }
 }
 
 impl Uncertainty {
     fn new(_measurement: Measurement) -> Uncertainty {
         Uncertainty {}
+    }
+}
+
+impl From<&Lidar> for crate::Lidar {
+    fn from(lidar: &Lidar) -> crate::Lidar {
+        crate::Lidar {
+            x: lidar.x,
+            y: lidar.y,
+            z: lidar.z,
+            scan_angle: Some(lidar.scan_angle),
+        }
     }
 }
 
@@ -94,24 +108,24 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 #[no_mangle]
 pub extern "C" fn leeward_uncertainty(
     leeward: *const Leeward,
-    las: *const LasPoint,
+    lidar: *const Lidar,
 ) -> *mut Uncertainty {
-    uncertainty(leeward, las, None)
+    uncertainty(leeward, lidar, None)
 }
 
 /// Calculates TPU for a las point with the provided normal.
 #[no_mangle]
 pub extern "C" fn leeward_uncertainty_with_normal(
     leeward: *const Leeward,
-    las: *const LasPoint,
+    lidar: *const Lidar,
     normal: *const Normal,
 ) -> *mut Uncertainty {
-    uncertainty(leeward, las, Some(normal))
+    uncertainty(leeward, lidar, Some(normal))
 }
 
 fn uncertainty(
     leeward: *const Leeward,
-    las: *const LasPoint,
+    lidar: *const Lidar,
     normal: Option<*const Normal>,
 ) -> *mut Uncertainty {
     if leeward.is_null() {
@@ -125,18 +139,18 @@ fn uncertainty(
             return ptr::null_mut();
         }
     };
-    if las.is_null() {
-        eprintln!("leeward c api error while computing uncertainty: las point is null");
+    if lidar.is_null() {
+        eprintln!("leeward c api error while computing uncertainty: lidar point is null");
         return ptr::null_mut();
     }
-    let las = match unsafe { las.as_ref() } {
-        Some(las) => las,
+    let lidar = match unsafe { lidar.as_ref() } {
+        Some(lidar) => lidar,
         None => {
-            eprintln!("leeward c api error while computing uncertainty: unable to get reference to las structure");
+            eprintln!("leeward c api error while computing uncertainty: unable to get reference to lidar structure");
             return ptr::null_mut();
         }
     };
-    let mut measurement = match leeward.measurement(las) {
+    let mut measurement = match leeward.measurement(lidar) {
         Ok(measurement) => measurement,
         Err(e) => {
             eprintln!("leeward c api error while computing uncertainty: {}", e);
@@ -194,11 +208,12 @@ mod tests {
         let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
         assert!(!leeward.is_null());
 
-        let las = capi::LasPoint {
+        let las = capi::Lidar {
             x: 320000.34,
             y: 4181319.35,
             z: 2687.58,
-            gps_time: 400825.8057,
+            scan_angle: 22.,
+            time: 400825.8057,
         };
         let uncertainty = capi::leeward_uncertainty(leeward, &las);
         assert!(!uncertainty.is_null());

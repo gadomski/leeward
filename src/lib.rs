@@ -13,7 +13,7 @@
 mod boresight;
 pub mod capi;
 mod config;
-pub mod measurement;
+mod measurement;
 mod partial;
 mod rotation;
 mod trajectory;
@@ -21,7 +21,7 @@ mod utils;
 
 pub use boresight::Boresight;
 pub use config::{Config, ErrorConfig};
-pub use measurement::{Measurement, Uncertainty};
+pub use measurement::{Lidar, Measurement, Platform, Uncertainty};
 pub use partial::{Dimension, Partial, Variable};
 pub use rotation::Rotation;
 pub use trajectory::Trajectory;
