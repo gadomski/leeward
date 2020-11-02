@@ -1,4 +1,5 @@
 use crate::{Config, Dimension, Rotation, Variable};
+use anyhow::{anyhow, Error};
 use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
@@ -12,6 +13,7 @@ pub struct Measurement {
     ned_to_enu: Matrix3<f64>,
     boresight: Rotation,
     lever_arm: Vector3<f64>,
+    las_scan_angle: Option<f64>,
 }
 
 /// Measurement uncertainty.
@@ -30,12 +32,24 @@ impl Measurement {
     /// let measurement = Measurement::new(&sbet::Point::default(), &las::Point::default(), &Config::default());
     /// ```
     pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
+        let las_scan_angle = if config.use_las_scan_angle {
+            Some(f64::from(las.scan_angle))
+        } else {
+            None
+        };
         let (northing, easting, _) =
             utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
         let las = Vector3::new(las.x, las.y, las.z);
         let gnss = Vector3::new(easting, northing, sbet.altitude);
         let imu = Rotation::new(sbet.roll, sbet.pitch, sbet.yaw);
-        Measurement::new_from_parts(las, gnss, imu, config.boresight, config.lever_arm)
+        Measurement::new_from_parts(
+            las,
+            gnss,
+            imu,
+            config.boresight,
+            config.lever_arm,
+            las_scan_angle,
+        )
     }
 
     /// Creates a new measurement from the basic parts.
@@ -50,7 +64,7 @@ impl Measurement {
     /// let imu = Rotation::new(0., 0., 0.);
     /// let boresight = Rotation::new(0., 0., 0.);
     /// let lever_arm = Vector3::new(1., 2., 3.);
-    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm);
+    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm, None);
     /// ```
     pub fn new_from_parts(
         las: Vector3<f64>,
@@ -58,6 +72,7 @@ impl Measurement {
         imu: Rotation,
         boresight: Rotation,
         lever_arm: Vector3<f64>,
+        las_scan_angle: Option<f64>,
     ) -> Measurement {
         Measurement {
             las,
@@ -66,6 +81,7 @@ impl Measurement {
             ned_to_enu: Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.),
             boresight,
             lever_arm,
+            las_scan_angle,
         }
     }
 
@@ -113,7 +129,7 @@ impl Measurement {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].gnss_point();
+    /// let point = measurements[0].calculated();
     /// ```
     pub fn calculated(&self) -> Vector3<f64> {
         self.gnss
@@ -135,6 +151,10 @@ impl Measurement {
     }
 
     /// Returns the measured point in the scanner's coordinate system.
+    ///
+    /// The scan angle can either be derived from the platform's position and orientation, or taken directly from the las file.
+    /// Pass `true` if you want to use the derived value, and `false` to use the las scan angle rank.
+    /// Generally, use the derived value unless you have some reason not to.
     ///
     /// # Examples
     ///
@@ -169,10 +189,12 @@ impl Measurement {
     /// let scan_angle = measurements[0].scan_angle();
     /// ```
     pub fn scan_angle(&self) -> f64 {
-        ((self.boresight.to_rotation_matrix().transpose() * (self.lever_arm + self.las_platform()))
-            .z
-            / self.range())
-        .asin()
+        self.las_scan_angle.unwrap_or_else(|| {
+            ((self.boresight.to_rotation_matrix().transpose()
+                * (self.lever_arm + self.las_platform()))
+            .z / self.range())
+            .asin()
+        })
     }
 
     /// Returns this measurement's scanner origin in global coordinates.
@@ -417,30 +439,65 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let measurement = measurements[0].with_new_config(&Config::default());
     /// ```
-    pub fn with_new_config(&self, config: &Config) -> Measurement {
+    pub fn with_new_config(&self, config: &Config) -> Result<Measurement, Error> {
+        if config.use_las_scan_angle & self.las_scan_angle.is_none() {
+            Err(anyhow!(
+                "new config uses the las scan angle, but las scan angle not present on measurement"
+            ))
+        } else {
+            Ok(Measurement::new_from_parts(
+                self.las,
+                self.gnss,
+                self.imu,
+                config.boresight,
+                config.lever_arm,
+                self.las_scan_angle,
+            ))
+        }
+    }
+
+    fn with_new_boresight(&self, boresight: Rotation) -> Measurement {
         Measurement::new_from_parts(
             self.las,
             self.gnss,
             self.imu,
-            config.boresight,
-            config.lever_arm,
+            boresight,
+            self.lever_arm,
+            self.las_scan_angle,
         )
     }
 
-    fn with_new_boresight(&self, boresight: Rotation) -> Measurement {
-        Measurement::new_from_parts(self.las, self.gnss, self.imu, boresight, self.lever_arm)
-    }
-
     fn with_new_imu(&self, imu: Rotation) -> Measurement {
-        Measurement::new_from_parts(self.las, self.gnss, imu, self.boresight, self.lever_arm)
+        Measurement::new_from_parts(
+            self.las,
+            self.gnss,
+            imu,
+            self.boresight,
+            self.lever_arm,
+            self.las_scan_angle,
+        )
     }
 
     fn with_new_lever_arm(&self, lever_arm: Vector3<f64>) -> Measurement {
-        Measurement::new_from_parts(self.las, self.gnss, self.imu, self.boresight, lever_arm)
+        Measurement::new_from_parts(
+            self.las,
+            self.gnss,
+            self.imu,
+            self.boresight,
+            lever_arm,
+            self.las_scan_angle,
+        )
     }
 
     fn with_new_gnss(&self, gnss: Vector3<f64>) -> Measurement {
-        Measurement::new_from_parts(self.las, gnss, self.imu, self.boresight, self.lever_arm)
+        Measurement::new_from_parts(
+            self.las,
+            gnss,
+            self.imu,
+            self.boresight,
+            self.lever_arm,
+            self.las_scan_angle,
+        )
     }
 
     fn adjust(&self, variable: Variable, delta: f64) -> Option<Measurement> {

@@ -1,5 +1,6 @@
 //! Computes a boresight adjustment for the provided data.
 
+use anyhow::Error;
 use clap::{App, Arg};
 use las::{Read, Reader};
 use leeward::{Config, Dimension, Measurement, Trajectory, Variable};
@@ -67,7 +68,7 @@ fn main() {
             * jacobian.transpose()
             * (&jacobian * values - &residuals);
         let new_config = update_config(&config, &variables, &new_values);
-        let new_measurements = update_measurements(&measurements, &new_config);
+        let new_measurements = update_measurements(&measurements, &new_config).unwrap();
         let new_residuals = calculate_residuals(&new_measurements);
         let new_rmse = new_residuals.norm();
         if new_rmse > rmse {
@@ -146,10 +147,13 @@ fn update_config(config: &Config, variables: &[Variable], values: &DVector<f64>)
     new_config
 }
 
-fn update_measurements(measurements: &[Measurement], config: &Config) -> Vec<Measurement> {
+fn update_measurements(
+    measurements: &[Measurement],
+    config: &Config,
+) -> Result<Vec<Measurement>, Error> {
     let mut new_measurements = vec![];
     for measurement in measurements {
-        new_measurements.push(measurement.with_new_config(config));
+        new_measurements.push(measurement.with_new_config(config)?);
     }
-    new_measurements
+    Ok(new_measurements)
 }
