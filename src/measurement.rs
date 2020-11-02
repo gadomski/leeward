@@ -33,7 +33,7 @@ impl Measurement {
     /// ```
     pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
         let las_scan_angle = if config.use_las_scan_angle {
-            Some(f64::from(las.scan_angle))
+            Some(f64::from(las.scan_angle.to_radians()))
         } else {
             None
         };
@@ -190,11 +190,9 @@ impl Measurement {
     /// ```
     pub fn scan_angle(&self) -> f64 {
         self.las_scan_angle.unwrap_or_else(|| {
-            // This is the scanner's vector, as calculated from the las point.
             ((self.boresight.to_rotation_matrix().transpose()
-                * (self.lever_arm + self.imu.to_rotation_matrix() * (self.las - self.gnss)))
-                .z // In the scanner matrix, z == range * sin(scan_angle)
-                / self.range())
+                * (self.lever_arm + self.las_platform()))
+            .z / self.range())
             .asin()
         })
     }

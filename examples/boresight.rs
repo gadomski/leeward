@@ -36,6 +36,8 @@ fn main() {
         .get_matches();
     let trajectory = Trajectory::from_path(matches.value_of("sbet").unwrap()).unwrap();
     let mut config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
+    let original_use_las_scan_angle = config.use_las_scan_angle;
+    config.use_las_scan_angle = false;
     let step_by = matches
         .value_of("decimate")
         .unwrap_or_else(|| "1")
@@ -86,6 +88,7 @@ fn main() {
             println!("");
         }
     }
+    config.use_las_scan_angle = original_use_las_scan_angle;
     println!("{}", toml::to_string_pretty(&config).unwrap());
 }
 
