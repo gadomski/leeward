@@ -3,6 +3,12 @@ use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
+const DEFAULT_USE_NUMERICAL_DIFFERENTIATION: bool = false;
+const DEFAULT_VARIABLES: [Variable; 3] = [
+    Variable::BoresightRoll,
+    Variable::BoresightPitch,
+    Variable::BoresightYaw,
+];
 
 /// A boresight alignment structure.
 ///
@@ -42,12 +48,8 @@ impl Boresight {
             measurements,
             tolerance: DEFAULT_TOLERANCE,
             config,
-            use_numerical_differentiation: false,
-            variables: vec![
-                Variable::BoresightRoll,
-                Variable::BoresightPitch,
-                Variable::BoresightYaw,
-            ],
+            use_numerical_differentiation: DEFAULT_USE_NUMERICAL_DIFFERENTIATION,
+            variables: DEFAULT_VARIABLES.to_vec(),
         }
     }
 
