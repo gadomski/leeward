@@ -22,7 +22,7 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
 ) -> Result<Vec<Measurement>, Error> {
     let trajectory = Trajectory::from_path(sbet)?;
     let config = Config::from_path(config)?;
-    trajectory.read_las(las, &config)
+    trajectory.read_las(las, config)
 }
 
 /// Utility method to read a las file to a vector of points.
@@ -36,6 +36,20 @@ pub fn read_las<P: AsRef<Path>>(path: P) -> Result<Vec<las::Point>, Error> {
     use las::{Read, Reader};
     Reader::from_path(path)?
         .points()
+        .map(|result| result.map_err(Error::from))
+        .collect()
+}
+
+/// Utility method to read a sbet file to a vector of points.
+///
+/// # Examples
+///
+/// ```
+/// let points = leeward::read_sbet("data/sbet.out").unwrap();
+/// ```
+pub fn read_sbet<P: AsRef<Path>>(path: P) -> Result<Vec<sbet::Point>, Error> {
+    use sbet::Reader;
+    Reader::from_path(path)?
         .map(|result| result.map_err(Error::from))
         .collect()
 }

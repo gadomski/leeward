@@ -102,7 +102,7 @@ impl Trajectory {
     pub fn read_las<P: AsRef<Path>>(
         &self,
         path: P,
-        config: &Config,
+        config: Config,
     ) -> Result<Vec<Measurement>, Error> {
         use las::{Read, Reader};
         Reader::from_path(path)?
@@ -126,14 +126,14 @@ impl Trajectory {
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
     /// let measurement = trajectory.measurement(&points[0], &config).unwrap();
     /// ```
-    pub fn measurement(&self, las: &las::Point, config: &Config) -> Result<Measurement, Error> {
+    pub fn measurement(&self, las: &las::Point, config: Config) -> Result<Measurement, Error> {
         let time = las
             .gps_time
             .ok_or_else(|| anyhow!("missing gps_time on las point"))?;
         let sbet = self
             .point(time)
             .ok_or_else(|| anyhow!("could not find sbet point for las gps_time: {}", time))?;
-        Ok(Measurement::new(sbet, las, config))
+        Ok(Measurement::new(las, sbet, config))
     }
 
     /// Returns the sbet point for the provided timestamp.

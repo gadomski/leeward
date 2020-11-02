@@ -89,7 +89,7 @@ impl<W: Write> Boresight<W> {
         variables: &[Variable],
         use_numerical_differentiation: bool,
     ) -> Result<Adjustment, Error> {
-        let mut adjustment = Adjustment::new(&self.measurements, self.config);
+        let mut adjustment = Adjustment::new(&self.measurements, self.config)?;
         let mut iteration = 0;
         loop {
             write!(self.output, "Iter #{}, rmse={}", iteration, adjustment.rmse)?;
@@ -105,7 +105,7 @@ impl<W: Write> Boresight<W> {
                 * (&jacobian * values - &adjustment.residuals);
             let new_config = self.update_config(variables, &new_values)?;
             let new_measurements = self.update_measurements(&new_config)?;
-            let new_adjustment = Adjustment::new(&new_measurements, new_config);
+            let new_adjustment = Adjustment::new(&new_measurements, new_config)?;
             if new_adjustment.rmse > adjustment.rmse {
                 writeln!(self.output, ": new_rmse={}, done...", new_adjustment.rmse)?;
                 return Ok(adjustment);
@@ -145,7 +145,7 @@ impl<W: Write> Boresight<W> {
                                 )
                             })?
                     } else {
-                        measurement.partial((dimension, variable))
+                        measurement.partial((dimension, variable))?
                     };
                 }
             }
@@ -202,26 +202,28 @@ impl<W: Write> Boresight<W> {
     fn update_measurements(&self, config: &Config) -> Result<Vec<Measurement>, Error> {
         let mut new_measurements = vec![];
         for measurement in &self.measurements {
-            new_measurements.push(measurement.with_new_config(config)?);
+            let mut measurement = measurement.clone();
+            measurement.set_config(*config); // FIXME clone code smell
+            new_measurements.push(measurement);
         }
         Ok(new_measurements)
     }
 }
 
 impl Adjustment {
-    fn new(measurements: &[Measurement], config: Config) -> Adjustment {
+    fn new(measurements: &[Measurement], config: Config) -> Result<Adjustment, Error> {
         let mut residuals = DVector::zeros(measurements.len() * 3);
         for (i, measurement) in measurements.iter().enumerate() {
-            let misalignment = measurement.calculated() - measurement.las_point();
+            let misalignment = measurement.calculated_point()? - measurement.measured_point();
             for (j, &value) in misalignment.iter().enumerate() {
                 let row = i * 3 + j;
                 residuals[row] = value;
             }
         }
-        Adjustment {
+        Ok(Adjustment {
             config: config,
             rmse: residuals.norm(),
             residuals,
-        }
+        })
     }
 }

@@ -44,7 +44,7 @@ fn main() {
     let mut measurements = Vec::new();
     for result in reader.points().step_by(step_by) {
         let las = result.unwrap();
-        measurements.push(trajectory.measurement(&las, &config).unwrap());
+        measurements.push(trajectory.measurement(&las, config).unwrap());
     }
     let mut boresight = Boresight::with_output(measurements, config, std::io::stderr());
     let adjustment = boresight

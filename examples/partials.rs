@@ -54,15 +54,15 @@ fn main() {
     writer.write_record(header).unwrap();
     for result in reader.points().step_by(step_by) {
         let las = result.unwrap();
-        let measurement = trajectory.measurement(&las, &config).unwrap();
-        let las_point = measurement.las_point();
+        let measurement = trajectory.measurement(&las, config).unwrap();
+        let las_point = measurement.measured_point();
         let mut record = vec![
             las_point.x.to_string(),
             las_point.y.to_string(),
             las_point.z.to_string(),
         ];
         for partial in Partial::all() {
-            record.push(measurement.partial(partial).to_string());
+            record.push(measurement.partial(partial).unwrap().to_string());
             if let Some(value) = measurement.finite_difference(partial) {
                 record.push(value.to_string());
             }

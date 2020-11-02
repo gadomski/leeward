@@ -1,21 +1,38 @@
-use crate::{Config, Dimension, ErrorConfig, Rotation, Variable};
-use anyhow::{anyhow, Error};
+use crate::{Config, Dimension, Variable};
+use anyhow::Error;
 use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
 ///
 /// More than just a point, a `Measurement` contains system configuration and platform orientation information as well.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Measurement {
-    las: Vector3<f64>,
-    gnss: Vector3<f64>,
-    imu: Rotation,
-    ned_to_enu: Matrix3<f64>,
-    boresight: Rotation,
-    lever_arm: Vector3<f64>,
-    las_scan_angle: Option<f64>,
-    error_config: ErrorConfig,
+    lidar: Lidar,
+    platform: Platform,
+    config: Config,
     normal: Option<Vector3<f64>>,
+}
+
+/// A lidar measurement.
+///
+/// For now, this is almost always derived from a las point, but it doesn't have to be.
+#[derive(Clone, Debug)]
+pub struct Lidar {
+    x: f64,
+    y: f64,
+    z: f64,
+    scan_angle: Option<f64>,
+}
+
+/// A gnss+ins measurement.
+#[derive(Clone, Debug)]
+pub struct Platform {
+    x: f64,
+    y: f64,
+    z: f64,
+    roll: f64,
+    pitch: f64,
+    yaw: f64,
 }
 
 /// Measurement uncertainty.
@@ -24,199 +41,260 @@ pub struct Uncertainty {
     covariance: Matrix3<f64>,
 }
 
+/// A trait implemented by things that can be turned into a projected (UTM) Gnss+Ins measurement.
+pub trait Projectable {
+    /// Project this into a UTM Platform measurement.
+    ///
+    /// # Examples
+    ///
+    /// `Projectable` is implemented for `sbet::Point`.
+    ///
+    /// ```
+    /// let points = leeward::read_sbet("data/sbet.out").unwrap();
+    /// let projected = points[0].project(11);
+    /// ```
+    fn project(&self, utm_zone: u8) -> Platform;
+}
+
 impl Measurement {
-    /// Creates a new measurement from the sbet, las, and config.
+    /// Creates a new measurement from a lidar point, a gnss+ins measurement, and a configuration.
     ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::{Config, Measurement};
-    /// let measurement = Measurement::new(&sbet::Point::default(), &las::Point::default(), &Config::default());
+    /// let measurement = Measurement::new(las::Point::default(), sbet::Point::default(), Config::default());
     /// ```
-    pub fn new(sbet: &sbet::Point, las: &las::Point, config: &Config) -> Measurement {
-        let las_scan_angle = if config.use_las_scan_angle {
-            Some(f64::from(las.scan_angle.to_radians()))
-        } else {
-            None
-        };
-        let (northing, easting, _) =
-            utm::radians_to_utm_wgs84(sbet.latitude, sbet.longitude, config.utm_zone);
-        let las = Vector3::new(las.x, las.y, las.z);
-        let gnss = Vector3::new(easting, northing, sbet.altitude);
-        let imu = Rotation::new(sbet.roll, sbet.pitch, sbet.yaw);
-        Measurement::new_from_parts(
-            las,
-            gnss,
-            imu,
-            config.boresight,
-            config.lever_arm,
-            las_scan_angle,
-            config.error,
-            None,
-        )
+    pub fn new<L: Into<Lidar>, P: Projectable>(
+        lidar: L,
+        projectable: P,
+        config: Config,
+    ) -> Measurement {
+        let lidar = lidar.into();
+        let platform = projectable.project(config.utm_zone);
+        Measurement {
+            lidar,
+            platform,
+            config,
+            normal: None,
+        }
     }
 
-    /// Creates a new measurement from the basic parts.
+    /// Sets the config for this measurement.
     ///
     /// # Examples
     ///
     /// ```
-    /// # use leeward::{Measurement, Rotation};
-    /// # use nalgebra::Vector3;
-    /// let las = Vector3::new(1., 2., 3.);
-    /// let gnss = Vector3::new(4., 5., 6.);
-    /// let imu = Rotation::new(0., 0., 0.);
-    /// let boresight = Rotation::new(0., 0., 0.);
-    /// let lever_arm = Vector3::new(1., 2., 3.);
-    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm, None, Default::default(), None);
+    /// use leeward::{Config, measurement::Lidar};
+    /// let measurement = Measurement::default();
+    /// let new_config = Config { derive_scan_angle: false, ..Default::default() };
+    /// measurement.set_config(new_config);
     /// ```
-    pub fn new_from_parts(
-        las: Vector3<f64>,
-        gnss: Vector3<f64>,
-        imu: Rotation,
-        boresight: Rotation,
-        lever_arm: Vector3<f64>,
-        las_scan_angle: Option<f64>,
-        error_config: ErrorConfig,
-        normal: Option<Vector3<f64>>,
-    ) -> Measurement {
-        Measurement {
-            las,
-            gnss,
-            imu,
-            ned_to_enu: Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.),
-            boresight,
-            lever_arm,
-            las_scan_angle,
-            error_config,
-            normal,
-        }
+    pub fn set_config(&mut self, config: Config) {
+        self.config = config;
     }
 
     /// Sets the normal for this measurement.
     ///
     /// Should be calculated from some sort of curvature measurement, e.g. PDAL's `filters.normal`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nalgebra::Vector3;
+    /// # use leeward::Measurement;
+    /// let measurement = Measurement::default();
+    /// measurement.set_normal(Vector3::new(0., 0., 1.));
+    /// ```
     pub fn set_normal(&mut self, normal: Vector3<f64>) {
         self.normal = Some(normal);
     }
 
-    /// Returns the las point.
+    /// Returns the measured point, i.e. the las point.
     ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].las_point();
+    /// use leeward::measurement::Lidar;
+    /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
+    /// let measurement = lidar.to_measurement();
+    /// let point = measurement.measured_point();
+    /// assert_eq!(point.x, 1.);
+    /// assert_eq!(point.y, 2.);
+    /// assert_eq!(point.z, 3.);
     /// ```
-    pub fn las_point(&self) -> Vector3<f64> {
-        self.las
+    pub fn measured_point(&self) -> Vector3<f64> {
+        Vector3::new(self.lidar.x, self.lidar.y, self.lidar.z)
     }
 
-    /// Returns the las point in platform coordinates.
+    /// Returns this measurement's projected gnss point.
     ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].las_platform();
+    /// use leeward::measurement::Platform;
+    /// let platform = Platform { x: 1., y: 2., z: 3., roll: 0., pitch: 0., yaw: 0. };
+    /// let measurement = platform.to_measurement();
+    /// let gnss = measurement.gnss();
+    /// assert_eq!(gnss.x, 1.);
+    /// assert_eq!(gnss.y, 2.);
+    /// assert_eq!(gnss.z, 3.);
     /// ```
-    pub fn las_platform(&self) -> Vector3<f64> {
-        self.imu.to_rotation_matrix().transpose()
-            * self.ned_to_enu.transpose()
-            * (self.las - self.gnss)
+    pub fn gnss(&self) -> Vector3<f64> {
+        Vector3::new(self.platform.x, self.platform.y, self.platform.z)
     }
 
-    /// Returns this measurement's gnss point in projected coordinates.
+    /// Returns this measurement's roll, pitch, and yaw as a rotation matrix.
     ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].gnss_point();
+    /// use leeward::measurement::Platform;
+    /// let platform = Platform { x: 0., y: 0., z: 0., roll: 0., pitch: 0., yaw: std::f64::consts::PI };
+    /// let measurement = platform.to_measurement();
+    /// let imu = measurement.imu();
+    /// assert_eq!(imu, Matrix3::new(1., 0., 0., 0., -1., 0., 0., 0., 1.));
     /// ```
-    pub fn gnss_point(&self) -> Vector3<f64> {
-        self.gnss
+    pub fn imu(&self) -> Matrix3<f64> {
+        crate::rotation::rotation_matrix(self.platform.roll, self.platform.pitch, self.platform.yaw)
     }
 
-    /// Returns the measured point as calculated through the lidar equation.
+    /// Returns the measured point in body frame.
     ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].calculated();
+    /// use leeward::measurement::{Lidar, Platform};
+    /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
+    /// let platform = Platform { x: 1., y: 2., z: 4., roll: 0., pitch: 0., yaw: 0. };
+    /// let measurement = Measurement::new(lidar, platform, Default::default());
+    /// let point = measurement.measured_point_in_body_frame();
+    /// assert_approx_eq!(point.x, 0.);
+    /// assert_approx_eq!(point.y, 0.);
+    /// assert_approx_eq!(point.z, 1.);
     /// ```
-    pub fn calculated(&self) -> Vector3<f64> {
-        self.gnss
-            + self.ned_to_enu
-                * self.imu.to_rotation_matrix()
-                * (self.boresight.to_rotation_matrix() * self.scanner() - self.lever_arm)
-    }
-
-    /// Returns the measured point as calculated through the lidar equation, in platform coordinates.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].calculated_platform();
-    /// ```
-    pub fn calculated_platform(&self) -> Vector3<f64> {
-        self.boresight.to_rotation_matrix() * self.scanner() - self.lever_arm
+    pub fn measured_point_in_body_frame(&self) -> Vector3<f64> {
+        self.imu().transpose() * (self.measured_point() - self.gnss())
     }
 
     /// Returns the measured point in the scanner's coordinate system.
     ///
-    /// The scan angle can either be derived from the platform's position and orientation, or taken directly from the las file.
-    /// Pass `true` if you want to use the derived value, and `false` to use the las scan angle rank.
-    /// Generally, use the derived value unless you have some reason not to.
-    ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let point = measurements[0].scanner();
+    /// use leeward::measurement::{Lidar, Platform};
+    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
+    /// let platform = Platform { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
+    /// let measurement = Measurement::new(lidar, platform, Default::default());
+    /// let scanner = measurement.scanner_point().unwrap();
+    /// assert_approx_equal!(scanner.x, 1.);
+    /// assert_approx_equal!(scanner.y, 0.);
+    /// assert_approx_equal!(scanner.z, 0.);
     /// ```
-    pub fn scanner(&self) -> Vector3<f64> {
+    pub fn scanner_point(&self) -> Result<Vector3<f64>, Error> {
         let range = self.range();
-        let scan_angle = self.scan_angle();
-        Vector3::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
+        let scan_angle = self.scan_angle()?;
+        Ok(Vector3::new(
+            range * scan_angle.cos(),
+            0.,
+            range * scan_angle.sin(),
+        ))
     }
 
     /// Returns this measurement's range.
     ///
+    /// Range is derived from the vector distance between the measured (lidar) point and the scanner's origin.
+    ///
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let range = measurements[0].range();
+    /// use leeward::{Config, Measurement, measurement::{Lidar, Platform}};
+    /// let lidar = Lidar { x: 0., y: 0., z: 0. };
+    /// let platform = Platform { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
+    /// let config = Config { lever_arm: Vector3::new(0., 0., -1.), ..Default::default() };
+    /// let measurement = Measurement::new(lidar, platform, config);
+    /// assert_approx_equal!(measurement.range(), 2.);
     /// ```
     pub fn range(&self) -> f64 {
-        (self.las - self.scanner_origin()).norm()
-    }
-
-    /// Returns this measurement's scan angle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scan_angle = measurements[0].scan_angle();
-    /// ```
-    pub fn scan_angle(&self) -> f64 {
-        self.las_scan_angle.unwrap_or_else(|| {
-            ((self.boresight.to_rotation_matrix().transpose()
-                * (self.lever_arm + self.las_platform()))
-            .z / self.range())
-            .asin()
-        })
+        (self.measured_point() - self.scanner_origin()).norm()
     }
 
     /// Returns this measurement's scanner origin in global coordinates.
     ///
-    /// Lever arm.
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::{Config, measurement::{Platform, Lidar}};
+    /// use nalgebra::Vector3;
+    /// let platform = Platform { x: 1., y: 2., z: 3., roll: 0., pitch: 0., yaw: 0. };
+    /// let lidar = Lidar { x: 0., y: 0., z: 0. };
+    /// let config = Config { lever_arm: Vector3::new(0., 0., -1.), ..Default::default() };
+    /// let measurement = Measurement::new(lidar, platform, config);
+    /// let origin = measurement.scanner_origin();
+    /// assert_eq!(origin.x, 1.);
+    /// assert_eq!(origin.y, 2.);
+    /// assert_eq!(origin.z, 2.);
+    /// ```
     pub fn scanner_origin(&self) -> Vector3<f64> {
-        self.gnss + self.ned_to_enu * self.imu.to_rotation_matrix() * (-self.lever_arm)
+        self.gnss() + self.ned_to_enu() * self.imu() * (-self.lever_arm())
+    }
+
+    fn ned_to_enu(&self) -> Matrix3<f64> {
+        Matrix3::new(0., 1., 0., 1., 0., 0., 0., 0., -1.)
+    }
+
+    fn lever_arm(&self) -> Vector3<f64> {
+        self.config.lever_arm
+    }
+
+    fn boresight(&self) -> Matrix3<f64> {
+        self.config.boresight.to_rotation_matrix()
+    }
+
+    /// Returns this measurement's scan angle.
+    ///
+    /// The scan angle can be derived from the orientation of the platform, or from the lidar point itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::{Config, Measurement, measurement::{Lidar, Platform}};
+    ///
+    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: Some(45f64.to_radians())}
+    /// let platform = Platform { x: 0., y: 0., z: 0., roll: 0., pitch: 0., yaw: 0. };
+    /// let config = Config { derive_scan_angle: true, ..Default::default() };
+    /// let measurement = Measurement::new(lidar, platform, config);
+    /// assert_approx_eq!(0., measurement.scan_angle().unwrap());
+    ///
+    /// let config = Config { derive_scan_angle: false, ..Default::default() };
+    /// let measurement = Measurement::new(lidar, platform, config);
+    /// assert_approx_eq!(45., measurement.scan_angle().unwrap());
+    ///
+    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
+    /// let measurement = Measurement::new(lidar, platform, config);
+    /// assert!(measurement.scan_angle().is_err());
+    /// ```
+    pub fn scan_angle(&self) -> Result<f64, Error> {
+        unimplemented!()
+    }
+
+    /// Returns the point as calculated from the lidar equation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use leeward::measurement::{Lidar, GnssIns};
+    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
+    /// let platform = GnssIns::Projected { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
+    /// let measurement = Measurement::new(lidar, platform, Default::default());
+    /// let calculated = measurement.calculated_point();
+    /// assert_approx_equal!(calculated.x, 0.);
+    /// assert_approx_equal!(calculated.y, 0.);
+    /// assert_approx_equal!(calculated.z, 1.);
+    /// ```
+    pub fn calculated_point(&self) -> Result<Vector3<f64>, Error> {
+        let scanner_point = self.scanner_point()?;
+        Ok(self.gnss() + self.imu() * (self.boresight() * scanner_point + self.lever_arm()))
     }
 
     /// Returns the uncertainty structure for this measurement.
@@ -227,49 +305,49 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let uncertainty = measurements[0].uncertainty();
     /// ```
-    pub fn uncertainty(&self) -> Uncertainty {
+    pub fn uncertainty(&self) -> Result<Uncertainty, Error> {
         use nalgebra::{MatrixMN, MatrixN, U14, U3};
 
         let mut jacobian = MatrixMN::<f64, U3, U14>::zeros();
         let mut errors = MatrixN::<f64, U14>::zeros();
         for (col, variable) in Variable::all().into_iter().enumerate() {
             for (row, dimension) in Dimension::all().into_iter().enumerate() {
-                jacobian[(row, col)] = self.partial((dimension, variable));
+                jacobian[(row, col)] = self.partial((dimension, variable))?;
             }
             errors[(col, col)] = self.error(variable).powi(2);
         }
         let covariance = &jacobian * errors * jacobian.transpose();
-        Uncertainty { covariance }
+        Ok(Uncertainty { covariance })
     }
 
     /// Returns this measurement's error for the given variable.
     pub fn error(&self, variable: Variable) -> f64 {
         match variable {
-            Variable::GnssX => self.error_config.gnss.x,
-            Variable::GnssY => self.error_config.gnss.y,
-            Variable::GnssZ => self.error_config.gnss.z,
-            Variable::ImuRoll => self.error_config.imu.roll,
-            Variable::ImuPitch => self.error_config.imu.pitch,
-            Variable::ImuYaw => self.error_config.imu.yaw,
-            Variable::BoresightRoll => self.error_config.boresight.roll,
-            Variable::BoresightPitch => self.error_config.boresight.pitch,
-            Variable::BoresightYaw => self.error_config.boresight.yaw,
+            Variable::GnssX => self.config.error.gnss.x,
+            Variable::GnssY => self.config.error.gnss.y,
+            Variable::GnssZ => self.config.error.gnss.z,
+            Variable::ImuRoll => self.config.error.imu.roll,
+            Variable::ImuPitch => self.config.error.imu.pitch,
+            Variable::ImuYaw => self.config.error.imu.yaw,
+            Variable::BoresightRoll => self.config.error.boresight.roll,
+            Variable::BoresightPitch => self.config.error.boresight.pitch,
+            Variable::BoresightYaw => self.config.error.boresight.yaw,
             Variable::Range => {
                 if let Some(incidence_angle) = self.incidence_angle() {
-                    (self.error_config.range.powi(2)
-                        + (self.range() * self.error_config.beam_divergence / 4.0
+                    (self.config.error.range.powi(2)
+                        + (self.range() * self.config.error.beam_divergence / 4.0
                             * incidence_angle.tan()))
                     .sqrt()
                 } else {
-                    self.error_config.range
+                    self.config.error.range
                 }
             }
-            Variable::ScanAngle => (self.error_config.angular_resolution.powi(2)
-                + (self.error_config.beam_divergence / 4.0).powi(2))
+            Variable::ScanAngle => (self.config.error.angular_resolution.powi(2)
+                + (self.config.error.beam_divergence / 4.0).powi(2))
             .sqrt(),
-            Variable::LeverArmX => self.error_config.lever_arm.x,
-            Variable::LeverArmY => self.error_config.lever_arm.y,
-            Variable::LeverArmZ => self.error_config.lever_arm.z,
+            Variable::LeverArmX => self.config.error.lever_arm.x,
+            Variable::LeverArmY => self.config.error.lever_arm.y,
+            Variable::LeverArmZ => self.config.error.lever_arm.z,
         }
     }
 
@@ -278,31 +356,32 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::{Dimension, Variable};
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial = measurements[0].partial((Dimension::X, Variable::ScanAngle));
+    /// use leeward::{Measurement, Dimension, Variable};
+    /// let measurement = Measurement::default();
+    /// assert_approx_eq!(1., measurement.partial((Dimension::X, Variable::GnssX)));
+    /// assert_approx_eq!(0., measurement.partial((Dimension::Y, Variable::GnssX)));
     /// ```
-    pub fn partial<P: Into<(Dimension, Variable)>>(&self, partial: P) -> f64 {
-        let cr = self.imu.roll.cos();
-        let sr = self.imu.roll.sin();
-        let cp = self.imu.pitch.cos();
-        let sp = self.imu.pitch.sin();
-        let cy = self.imu.yaw.cos();
-        let sy = self.imu.yaw.sin();
-        let cbr = self.boresight.roll.cos();
-        let sbr = self.boresight.roll.sin();
-        let cbp = self.boresight.pitch.cos();
-        let sbp = self.boresight.pitch.sin();
-        let cby = self.boresight.yaw.cos();
-        let sby = self.boresight.yaw.sin();
-        let scan_angle = self.scan_angle();
+    pub fn partial<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Result<f64, Error> {
+        let cr = self.platform.roll.cos();
+        let sr = self.platform.roll.sin();
+        let cp = self.platform.pitch.cos();
+        let sp = self.platform.pitch.sin();
+        let cy = self.platform.yaw.cos();
+        let sy = self.platform.yaw.sin();
+        let cbr = self.config.boresight.roll.cos();
+        let sbr = self.config.boresight.roll.sin();
+        let cbp = self.config.boresight.pitch.cos();
+        let sbp = self.config.boresight.pitch.sin();
+        let cby = self.config.boresight.yaw.cos();
+        let sby = self.config.boresight.yaw.sin();
+        let scan_angle = self.scan_angle()?;
         let ca = scan_angle.cos();
         let sa = scan_angle.sin();
         let d = self.range();
-        let lx = self.lever_arm.x;
-        let ly = self.lever_arm.y;
-        let lz = self.lever_arm.z;
-        match partial.into() {
+        let lx = self.config.lever_arm.x;
+        let ly = self.config.lever_arm.y;
+        let lz = self.config.lever_arm.z;
+        Ok(match partial.into() {
             (Dimension::X, Variable::GnssX) => 1.,
             (Dimension::Y, Variable::GnssX) => 0.,
             (Dimension::Z, Variable::GnssX) => 0.,
@@ -444,170 +523,7 @@ impl Measurement {
             (Dimension::X, Variable::LeverArmZ) => cp * sr,
             (Dimension::Y, Variable::LeverArmZ) => -sp,
             (Dimension::Z, Variable::LeverArmZ) => cp * cr,
-        }
-    }
-
-    /// Returns the partial derivative as determined by numerical differentiation via the finite difference method.
-    ///
-    /// Returns `None` if the variable is a derived value, e.g. range which is derived from the position of the las point and the scanner origin.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::{Dimension, Variable};
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial = measurements[0].finite_difference((Dimension::X, Variable::LeverArmX)).unwrap();
-    /// ```
-    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Option<f64> {
-        let (dimension, variable) = partial.into();
-        let h = f64::EPSILON.sqrt() * 100.;
-        if let Some((positive, negative)) = self
-            .adjust(variable, h)
-            .and_then(|p| self.adjust(variable, -h).map(|n| (p, n)))
-        {
-            Some((positive.value(dimension) - negative.value(dimension)) / (2.0 * h))
-        } else {
-            None
-        }
-    }
-
-    /// Creates a new measurement with a new config.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::Config;
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let measurement = measurements[0].with_new_config(&Config::default());
-    /// ```
-    pub fn with_new_config(&self, config: &Config) -> Result<Measurement, Error> {
-        if config.use_las_scan_angle & self.las_scan_angle.is_none() {
-            Err(anyhow!(
-                "new config uses the las scan angle, but las scan angle not present on measurement"
-            ))
-        } else {
-            Ok(Measurement::new_from_parts(
-                self.las,
-                self.gnss,
-                self.imu,
-                config.boresight,
-                config.lever_arm,
-                self.las_scan_angle,
-                config.error,
-                self.normal,
-            ))
-        }
-    }
-
-    fn with_new_boresight(&self, boresight: Rotation) -> Measurement {
-        Measurement::new_from_parts(
-            self.las,
-            self.gnss,
-            self.imu,
-            boresight,
-            self.lever_arm,
-            self.las_scan_angle,
-            self.error_config,
-            self.normal,
-        )
-    }
-
-    fn with_new_imu(&self, imu: Rotation) -> Measurement {
-        Measurement::new_from_parts(
-            self.las,
-            self.gnss,
-            imu,
-            self.boresight,
-            self.lever_arm,
-            self.las_scan_angle,
-            self.error_config,
-            self.normal,
-        )
-    }
-
-    fn with_new_lever_arm(&self, lever_arm: Vector3<f64>) -> Measurement {
-        Measurement::new_from_parts(
-            self.las,
-            self.gnss,
-            self.imu,
-            self.boresight,
-            lever_arm,
-            self.las_scan_angle,
-            self.error_config,
-            self.normal,
-        )
-    }
-
-    fn with_new_gnss(&self, gnss: Vector3<f64>) -> Measurement {
-        Measurement::new_from_parts(
-            self.las,
-            gnss,
-            self.imu,
-            self.boresight,
-            self.lever_arm,
-            self.las_scan_angle,
-            self.error_config,
-            self.normal,
-        )
-    }
-
-    fn adjust(&self, variable: Variable, delta: f64) -> Option<Measurement> {
-        match variable {
-            Variable::Range | Variable::ScanAngle => None,
-            Variable::BoresightRoll => {
-                Some(self.with_new_boresight(self.boresight.with_roll(self.boresight.roll + delta)))
-            }
-            Variable::BoresightPitch => Some(
-                self.with_new_boresight(self.boresight.with_pitch(self.boresight.pitch + delta)),
-            ),
-            Variable::BoresightYaw => {
-                Some(self.with_new_boresight(self.boresight.with_yaw(self.boresight.yaw + delta)))
-            }
-            Variable::ImuRoll => Some(self.with_new_imu(self.imu.with_roll(self.imu.roll + delta))),
-            Variable::ImuPitch => {
-                Some(self.with_new_imu(self.imu.with_pitch(self.imu.pitch + delta)))
-            }
-            Variable::ImuYaw => Some(self.with_new_imu(self.imu.with_yaw(self.imu.yaw + delta))),
-            Variable::LeverArmX => Some(self.with_new_lever_arm(Vector3::new(
-                self.lever_arm.x + delta,
-                self.lever_arm.y,
-                self.lever_arm.z,
-            ))),
-            Variable::LeverArmY => Some(self.with_new_lever_arm(Vector3::new(
-                self.lever_arm.x,
-                self.lever_arm.y + delta,
-                self.lever_arm.z,
-            ))),
-            Variable::LeverArmZ => Some(self.with_new_lever_arm(Vector3::new(
-                self.lever_arm.x,
-                self.lever_arm.y,
-                self.lever_arm.z + delta,
-            ))),
-            Variable::GnssX => Some(self.with_new_gnss(Vector3::new(
-                self.gnss.x + delta,
-                self.gnss.y,
-                self.gnss.z,
-            ))),
-            Variable::GnssY => Some(self.with_new_gnss(Vector3::new(
-                self.gnss.x,
-                self.gnss.y + delta,
-                self.gnss.z,
-            ))),
-            Variable::GnssZ => Some(self.with_new_gnss(Vector3::new(
-                self.gnss.x,
-                self.gnss.y,
-                self.gnss.z + delta,
-            ))),
-        }
-    }
-
-    fn value(&self, dimension: Dimension) -> f64 {
-        let calculated = self.calculated();
-        match dimension {
-            Dimension::X => calculated.x,
-            Dimension::Y => calculated.y,
-            Dimension::Z => calculated.z,
-        }
+        })
     }
 
     fn incidence_angle(&self) -> Option<f64> {
@@ -619,5 +535,65 @@ impl Measurement {
 
     fn laser_direction(&self) -> Vector3<f64> {
         unimplemented!()
+    }
+
+    pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Option<f64> {
+        unimplemented!()
+    }
+
+    pub fn calculated_point_in_body_frame(&self) -> Vector3<f64> {
+        unimplemented!()
+    }
+}
+
+impl From<&las::Point> for Lidar {
+    fn from(las: &las::Point) -> Lidar {
+        Lidar {
+            x: las.x,
+            y: las.y,
+            z: las.z,
+            scan_angle: Some(f64::from(las.scan_angle.to_radians())),
+        }
+    }
+}
+
+impl From<las::Point> for Lidar {
+    fn from(las: las::Point) -> Lidar {
+        Lidar::from(&las)
+    }
+}
+
+impl Projectable for &sbet::Point {
+    fn project(&self, utm_zone: u8) -> Platform {
+        let (northing, easting, _) =
+            utm::radians_to_utm_wgs84(self.latitude, self.longitude, utm_zone);
+        Platform {
+            x: easting,
+            y: northing,
+            z: self.altitude,
+            roll: self.roll,
+            pitch: self.pitch,
+            yaw: self.yaw,
+        }
+    }
+}
+
+impl Projectable for sbet::Point {
+    fn project(&self, utm_zone: u8) -> Platform {
+        (&self).project(utm_zone)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Measurement;
+    use crate::Config;
+
+    #[test]
+    fn from_las_and_sbet() {
+        let las = crate::read_las("data/points.las").unwrap();
+        let sbet = crate::read_sbet("data/sbet.out").unwrap();
+        let config = Config::from_path("data/config.toml").unwrap();
+        let _ = Measurement::new(&las[0], sbet[0], config);
     }
 }
