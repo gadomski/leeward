@@ -4,12 +4,6 @@ use nalgebra::{DMatrix, DVector};
 use std::io::{Sink, Write};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
-const DEFAULT_USE_NUMERICAL_DIFFERENTIATION: bool = false;
-const DEFAULT_VARIABLES: [Variable; 3] = [
-    Variable::BoresightRoll,
-    Variable::BoresightPitch,
-    Variable::BoresightYaw,
-];
 
 /// A boresight alignment structure.
 ///
@@ -19,8 +13,6 @@ pub struct Boresight<W: Write> {
     config: Config,
     measurements: Vec<Measurement>,
     tolerance: f64,
-    use_numerical_differentiation: bool,
-    variables: Vec<Variable>,
     output: W,
 }
 
@@ -51,8 +43,6 @@ impl Boresight<Sink> {
             measurements,
             tolerance: DEFAULT_TOLERANCE,
             config,
-            use_numerical_differentiation: DEFAULT_USE_NUMERICAL_DIFFERENTIATION,
-            variables: DEFAULT_VARIABLES.to_vec(),
             output: std::io::sink(),
         }
     }
@@ -76,40 +66,8 @@ impl<W: Write> Boresight<W> {
             measurements,
             tolerance: DEFAULT_TOLERANCE,
             config,
-            use_numerical_differentiation: DEFAULT_USE_NUMERICAL_DIFFERENTIATION,
-            variables: DEFAULT_VARIABLES.to_vec(),
             output,
         }
-    }
-
-    /// Sets whether this boresight uses numerical differentation.
-    ///
-    /// Defaults to false (analyticial partials).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::Boresight;
-    /// let mut boresight = Boresight::new(vec![], Default::default());
-    /// boresight.use_numerical_differentiation(true);
-    /// ```
-    pub fn use_numerical_differentiation(&mut self, use_numerical_differentiation: bool) {
-        self.use_numerical_differentiation = use_numerical_differentiation;
-    }
-
-    /// Sets this boresight's variables.
-    ///
-    /// Use this to control which varaibles are modified during the boresight adjustment.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::{Boresight, Config, Variable};
-    /// let mut boresight = Boresight::new(vec![], Config::default());
-    /// boresight.set_variables(vec![Variable::BoresightRoll, Variable::BoresightPitch, Variable::BoresightYaw]);
-    /// ```
-    pub fn set_variables(&mut self, variables: Vec<Variable>) {
-        self.variables = variables;
     }
 
     /// Runs this boresight adjustment.
@@ -119,20 +77,24 @@ impl<W: Write> Boresight<W> {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::{Boresight, Config};
+    /// # use leeward::{Boresight, Config, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let mut boresight = Boresight::new(measurements, config);
-    /// let adjustment = boresight.run();
+    /// let adjustment = boresight.run(&[Variable::BoresightRoll, Variable::BoresightPitch, Variable::BoresightYaw], false);
     /// ```
-    pub fn run(&mut self) -> Result<Adjustment, Error> {
+    pub fn run(
+        &mut self,
+        variables: &[Variable],
+        use_numerical_differentiation: bool,
+    ) -> Result<Adjustment, Error> {
         let mut adjustment = Adjustment::new(&self.measurements, self.config);
         let mut iteration = 0;
         loop {
             write!(self.output, "Iter #{}, rmse={}", iteration, adjustment.rmse)?;
-            let jacobian = self.jacobian()?;
-            let values = self.values()?;
-            for (variable, value) in self.variables.iter().zip(&values) {
+            let jacobian = self.jacobian(variables, use_numerical_differentiation)?;
+            let values = self.values(variables)?;
+            for (variable, value) in variables.iter().zip(&values) {
                 write!(self.output, ", {}={}", variable, value)?;
             }
             let new_values = (jacobian.transpose() * &jacobian)
@@ -140,7 +102,7 @@ impl<W: Write> Boresight<W> {
                 .ok_or_else(|| anyhow!("no inverse found"))?
                 * jacobian.transpose()
                 * (&jacobian * values - &adjustment.residuals);
-            let new_config = self.update_config(&new_values)?;
+            let new_config = self.update_config(variables, &new_values)?;
             let new_measurements = self.update_measurements(&new_config)?;
             let new_adjustment = Adjustment::new(&new_measurements, new_config);
             if new_adjustment.rmse > adjustment.rmse {
@@ -159,16 +121,20 @@ impl<W: Write> Boresight<W> {
         }
     }
 
-    fn jacobian(&self) -> Result<DMatrix<f64>, Error> {
+    fn jacobian(
+        &self,
+        variables: &[Variable],
+        use_numerical_differentiation: bool,
+    ) -> Result<DMatrix<f64>, Error> {
         use crate::Dimension;
-        let mut jacobian = DMatrix::zeros(self.measurements.len() * 3, self.variables.len());
+        let mut jacobian = DMatrix::zeros(self.measurements.len() * 3, variables.len());
         let dimensions = Dimension::all();
         assert_eq!(dimensions.len(), 3);
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, &dimension) in dimensions.iter().enumerate() {
                 let row = i * dimensions.len() + j;
-                for (col, &variable) in self.variables.iter().enumerate() {
-                    jacobian[(row, col)] = if self.use_numerical_differentiation {
+                for (col, &variable) in variables.iter().enumerate() {
+                    jacobian[(row, col)] = if use_numerical_differentiation {
                         measurement
                             .finite_difference((dimension, variable))
                             .ok_or_else(|| {
@@ -186,9 +152,9 @@ impl<W: Write> Boresight<W> {
         Ok(jacobian)
     }
 
-    fn values(&self) -> Result<DVector<f64>, Error> {
-        let mut values = DVector::zeros(self.variables.len());
-        for (i, variable) in self.variables.iter().enumerate() {
+    fn values(&self, variables: &[Variable]) -> Result<DVector<f64>, Error> {
+        let mut values = DVector::zeros(variables.len());
+        for (i, variable) in variables.iter().enumerate() {
             values[i] = match *variable {
                 Variable::BoresightRoll => self.config.boresight.roll,
                 Variable::BoresightPitch => self.config.boresight.pitch,
@@ -207,9 +173,13 @@ impl<W: Write> Boresight<W> {
         Ok(values)
     }
 
-    fn update_config(&self, values: &DVector<f64>) -> Result<Config, Error> {
+    fn update_config(
+        &self,
+        variables: &[Variable],
+        values: &DVector<f64>,
+    ) -> Result<Config, Error> {
         let mut new_config = self.config.clone();
-        for (&variable, &value) in self.variables.iter().zip(values.iter()) {
+        for (&variable, &value) in variables.iter().zip(values.iter()) {
             match variable {
                 Variable::BoresightRoll => new_config.boresight.roll = value,
                 Variable::BoresightPitch => new_config.boresight.pitch = value,

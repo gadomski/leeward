@@ -47,11 +47,30 @@ fn main() {
         measurements.push(trajectory.measurement(&las, &config).unwrap());
     }
     let mut boresight = Boresight::with_output(measurements, config, std::io::stderr());
-    boresight.set_variables(vec![
-        Variable::BoresightRoll,
-        Variable::BoresightPitch,
-        Variable::BoresightYaw,
-    ]);
-    let adjustment = boresight.run().unwrap();
+
+    eprintln!("Running boresight + analytic");
+    boresight
+        .run(
+            &[
+                Variable::BoresightRoll,
+                Variable::BoresightPitch,
+                Variable::BoresightYaw,
+            ],
+            false,
+        )
+        .unwrap();
+
+    eprintln!("Running lever arm + analytic");
+    let adjustment = boresight
+        .run(
+            &[
+                Variable::LeverArmX,
+                Variable::LeverArmY,
+                Variable::LeverArmZ,
+            ],
+            false,
+        )
+        .unwrap();
+
     println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
 }
