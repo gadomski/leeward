@@ -3,6 +3,7 @@ use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 use std::io::{Sink, Write};
 
+/// cbindgen:ignore
 const DEFAULT_TOLERANCE: f64 = 1e-6;
 
 /// A boresight alignment structure.

@@ -7,15 +7,11 @@ edition = "2018"
 [lib]
 crate-type = ["lib", "staticlib"]
 
-[features]
-default = ["capi"]
-capi = ["cbindgen", "libc"]
-
 [dependencies]
 anyhow = "1.0"
-cbindgen = { version = "0.15", optional = true }
+cbindgen = "0.15"
 las = "0.7"
-libc = { version = "0.2", optional = true }
+libc = "0.2"
 nalgebra = { version = "0.23", features = ["serde-serialize"] }
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }

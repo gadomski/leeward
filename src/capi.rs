@@ -17,16 +17,13 @@ pub struct Leeward {
 ///
 /// # Examples
 ///
-/// ```
-/// # use leeward::capi;
-/// # use std::ffi::CString;
-/// let sbet = CString::new("data/sbet.out").unwrap();
-/// let config = CString::new("data/config.toml").unwrap();
-/// let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
-/// capi::leeward_free(leeward);
+/// ```c
+/// let leeward = leeward_new("data/sbet.out", "data/config.toml");
+/// assert(leeward);
+/// leeward_free(leeward);
 /// ```
 #[no_mangle]
-pub fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mut Leeward {
+pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mut Leeward {
     let config = unsafe { CStr::from_ptr(config) }.to_string_lossy();
     let config = match Config::from_path(&*config) {
         Ok(config) => config,
