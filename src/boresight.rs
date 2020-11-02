@@ -115,7 +115,9 @@ impl<W: Write> Boresight<W> {
         loop {
             let jacobian = self.jacobian()?;
             let values = self.values()?;
-            let new_values = (jacobian.transpose() * &jacobian).try_inverse().unwrap()
+            let new_values = (jacobian.transpose() * &jacobian)
+                .try_inverse()
+                .ok_or_else(|| anyhow!("no inverse found"))?
                 * jacobian.transpose()
                 * (&jacobian * values - &adjustment.residuals);
             let new_config = self.update_config(&new_values)?;

@@ -46,7 +46,7 @@ fn main() {
         let las = result.unwrap();
         measurements.push(trajectory.measurement(&las, &config).unwrap());
     }
-    let mut boresight = Boresight::new(measurements, config);
+    let mut boresight = Boresight::with_output(measurements, config, std::io::stderr());
     boresight.set_variables(vec![
         Variable::BoresightRoll,
         Variable::BoresightPitch,
