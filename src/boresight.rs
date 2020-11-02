@@ -1,6 +1,7 @@
 use crate::{Config, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
+use std::io::{Sink, Write};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
 const DEFAULT_USE_NUMERICAL_DIFFERENTIATION: bool = false;
@@ -14,12 +15,13 @@ const DEFAULT_VARIABLES: [Variable; 3] = [
 ///
 /// Iteratively refines the lidar parameters to determine the optimal system configuration.
 #[derive(Debug)]
-pub struct Boresight {
+pub struct Boresight<W: Write> {
     config: Config,
     measurements: Vec<Measurement>,
     tolerance: f64,
     use_numerical_differentiation: bool,
     variables: Vec<Variable>,
+    output: W,
 }
 
 /// The results of a boresight adjustment.
@@ -30,10 +32,11 @@ pub struct Adjustment {
     pub residuals: DVector<f64>,
 }
 
-impl Boresight {
+impl Boresight<Sink> {
     /// Creates a new boresight adjustment.
     ///
     /// The adjustment is initialized with boresight roll, pitch, and yaw as default adjustment variables.
+    /// All output will be sent to /dev/null, to print output use `Boresight::with_output`.
     ///
     /// # Examples
     ///
@@ -43,13 +46,39 @@ impl Boresight {
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let boresight = Boresight::new(measurements, config);
     /// ```
-    pub fn new(measurements: Vec<Measurement>, config: Config) -> Boresight {
+    pub fn new(measurements: Vec<Measurement>, config: Config) -> Boresight<Sink> {
         Boresight {
             measurements,
             tolerance: DEFAULT_TOLERANCE,
             config,
             use_numerical_differentiation: DEFAULT_USE_NUMERICAL_DIFFERENTIATION,
             variables: DEFAULT_VARIABLES.to_vec(),
+            output: std::io::sink(),
+        }
+    }
+}
+
+impl<W: Write> Boresight<W> {
+    /// Creates a new boresight adjustment with the specified output.
+    ///
+    /// The adjustment is initialized with boresight roll, pitch, and yaw as default adjustment variables.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Boresight, Config};
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let boresight = Boresight::with_output(measurements, config, std::io::sink());
+    /// ```
+    pub fn with_output(measurements: Vec<Measurement>, config: Config, output: W) -> Boresight<W> {
+        Boresight {
+            measurements,
+            tolerance: DEFAULT_TOLERANCE,
+            config,
+            use_numerical_differentiation: DEFAULT_USE_NUMERICAL_DIFFERENTIATION,
+            variables: DEFAULT_VARIABLES.to_vec(),
+            output,
         }
     }
 
