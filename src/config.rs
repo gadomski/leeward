@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// System and platform configuration.
-#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
 pub struct Config {
     pub utm_zone: u8,
     pub use_las_scan_angle: bool,

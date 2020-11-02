@@ -10,13 +10,15 @@
 //! let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
 //! ```
 
-pub mod config;
+mod boresight;
+mod config;
 mod measurement;
 mod partial;
 mod rotation;
 mod trajectory;
 mod utils;
 
+pub use boresight::Boresight;
 pub use config::Config;
 pub use measurement::{Measurement, Uncertainty};
 pub use partial::{Dimension, Partial, Variable};
