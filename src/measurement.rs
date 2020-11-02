@@ -103,7 +103,7 @@ impl Measurement {
 
     /// Returns this measurement's roll, pitch, and yaw as a rotation matrix.
     pub fn imu(&self) -> Matrix3<f64> {
-        crate::rotation::rotation_matrix(self.platform.roll, self.platform.pitch, self.platform.yaw)
+        crate::rotation_matrix(self.platform.roll, self.platform.pitch, self.platform.yaw)
     }
 
     /// Returns the measured point in body frame.

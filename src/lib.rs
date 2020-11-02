@@ -23,6 +23,6 @@ pub use boresight::Boresight;
 pub use config::{Config, ErrorConfig};
 pub use measurement::{Lidar, Measurement, Platform, Projectable, Uncertainty};
 pub use partial::{Dimension, Partial, Variable};
-pub use rotation::Rotation;
+pub use rotation::{rotation_matrix, Rotation};
 pub use trajectory::Trajectory;
 pub use utils::{measurements, read_las, read_sbet};
