@@ -4,9 +4,18 @@ version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 edition = "2018"
 
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[features]
+default = ["capi"]
+capi = ["cbindgen", "libc"]
+
 [dependencies]
 anyhow = "1.0"
+cbindgen = { version = "0.15", optional = true }
 las = "0.7"
+libc = { version = "0.2", optional = true }
 nalgebra = { version = "0.23", features = ["serde-serialize"] }
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }

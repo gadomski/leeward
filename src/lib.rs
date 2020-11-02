@@ -11,6 +11,8 @@
 //! ```
 
 mod boresight;
+#[cfg(feature = "capi")]
+pub mod capi;
 mod config;
 mod measurement;
 mod partial;
