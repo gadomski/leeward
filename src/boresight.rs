@@ -112,9 +112,14 @@ impl<W: Write> Boresight<W> {
     /// ```
     pub fn run(&mut self) -> Result<Adjustment, Error> {
         let mut adjustment = Adjustment::new(&self.measurements, self.config);
+        let mut iteration = 0;
         loop {
+            write!(self.output, "Iter #{}, rmse={}", iteration, adjustment.rmse)?;
             let jacobian = self.jacobian()?;
             let values = self.values()?;
+            for (variable, value) in self.variables.iter().zip(&values) {
+                write!(self.output, ", {}={}", variable, value)?;
+            }
             let new_values = (jacobian.transpose() * &jacobian)
                 .try_inverse()
                 .ok_or_else(|| anyhow!("no inverse found"))?
@@ -124,13 +129,17 @@ impl<W: Write> Boresight<W> {
             let new_measurements = self.update_measurements(&new_config)?;
             let new_adjustment = Adjustment::new(&new_measurements, new_config);
             if new_adjustment.rmse > adjustment.rmse {
+                writeln!(self.output, ": new_rmse={}, done...", new_adjustment.rmse)?;
                 return Ok(adjustment);
             } else if (adjustment.rmse - new_adjustment.rmse) / adjustment.rmse < self.tolerance {
+                writeln!(self.output, ": new_rmse={}, done...", new_adjustment.rmse)?;
                 return Ok(adjustment);
             } else {
+                writeln!(self.output, "")?;
                 self.measurements = new_measurements;
                 self.config = new_config;
                 adjustment = new_adjustment;
+                iteration += 1;
             }
         }
     }

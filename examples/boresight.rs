@@ -50,7 +50,7 @@ fn main() {
     boresight.set_variables(vec![
         Variable::BoresightRoll,
         Variable::BoresightPitch,
-        Variable::BoresightRoll,
+        Variable::BoresightYaw,
     ]);
     let adjustment = boresight.run().unwrap();
     println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
