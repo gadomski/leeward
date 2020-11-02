@@ -47,9 +47,7 @@ fn main() {
         measurements.push(trajectory.measurement(&las, &config).unwrap());
     }
     let mut boresight = Boresight::with_output(measurements, config, std::io::stderr());
-
-    eprintln!("Running boresight + analytic");
-    boresight
+    let adjustment = boresight
         .run(
             &[
                 Variable::BoresightRoll,
@@ -59,18 +57,5 @@ fn main() {
             false,
         )
         .unwrap();
-
-    eprintln!("Running lever arm + analytic");
-    let adjustment = boresight
-        .run(
-            &[
-                Variable::LeverArmX,
-                Variable::LeverArmY,
-                Variable::LeverArmZ,
-            ],
-            false,
-        )
-        .unwrap();
-
     println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
 }
