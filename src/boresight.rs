@@ -82,6 +82,21 @@ impl<W: Write> Boresight<W> {
         }
     }
 
+    /// Sets whether this boresight uses numerical differentation.
+    ///
+    /// Defaults to false (analyticial partials).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Boresight;
+    /// let mut boresight = Boresight::new(vec![], Default::default());
+    /// boresight.use_numerical_differentiation(true);
+    /// ```
+    pub fn use_numerical_differentiation(&mut self, use_numerical_differentiation: bool) {
+        self.use_numerical_differentiation = use_numerical_differentiation;
+    }
+
     /// Sets this boresight's variables.
     ///
     /// Use this to control which varaibles are modified during the boresight adjustment.
