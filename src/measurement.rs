@@ -1,4 +1,4 @@
-use crate::{Config, Dimension, Rotation, Variable};
+use crate::{Config, Dimension, ErrorConfig, Rotation, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{Matrix3, Vector3};
 
@@ -14,6 +14,8 @@ pub struct Measurement {
     boresight: Rotation,
     lever_arm: Vector3<f64>,
     las_scan_angle: Option<f64>,
+    error_config: ErrorConfig,
+    normal: Option<Vector3<f64>>,
 }
 
 /// Measurement uncertainty.
@@ -49,6 +51,8 @@ impl Measurement {
             config.boresight,
             config.lever_arm,
             las_scan_angle,
+            config.error,
+            None,
         )
     }
 
@@ -64,7 +68,7 @@ impl Measurement {
     /// let imu = Rotation::new(0., 0., 0.);
     /// let boresight = Rotation::new(0., 0., 0.);
     /// let lever_arm = Vector3::new(1., 2., 3.);
-    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm, None);
+    /// let measurement = Measurement::new_from_parts(las, gnss, imu, boresight, lever_arm, None, Default::default(), None);
     /// ```
     pub fn new_from_parts(
         las: Vector3<f64>,
@@ -73,6 +77,8 @@ impl Measurement {
         boresight: Rotation,
         lever_arm: Vector3<f64>,
         las_scan_angle: Option<f64>,
+        error_config: ErrorConfig,
+        normal: Option<Vector3<f64>>,
     ) -> Measurement {
         Measurement {
             las,
@@ -82,6 +88,8 @@ impl Measurement {
             boresight,
             lever_arm,
             las_scan_angle,
+            error_config,
+            normal,
         }
     }
 
@@ -228,8 +236,34 @@ impl Measurement {
     }
 
     /// Returns this measurement's error for the given variable.
-    pub fn error(&self, _variable: Variable) -> f64 {
-        unimplemented!()
+    pub fn error(&self, variable: Variable) -> f64 {
+        match variable {
+            Variable::GnssX => self.error_config.gnss.x,
+            Variable::GnssY => self.error_config.gnss.y,
+            Variable::GnssZ => self.error_config.gnss.z,
+            Variable::ImuRoll => self.error_config.imu.roll,
+            Variable::ImuPitch => self.error_config.imu.pitch,
+            Variable::ImuYaw => self.error_config.imu.yaw,
+            Variable::BoresightRoll => self.error_config.boresight.roll,
+            Variable::BoresightPitch => self.error_config.boresight.pitch,
+            Variable::BoresightYaw => self.error_config.boresight.yaw,
+            Variable::Range => {
+                if let Some(incidence_angle) = self.incidence_angle() {
+                    (self.error_config.range.powi(2)
+                        + (self.range() * self.error_config.beam_divergence / 4.0
+                            * incidence_angle.tan()))
+                    .sqrt()
+                } else {
+                    self.error_config.range
+                }
+            }
+            Variable::ScanAngle => (self.error_config.angular_resolution.powi(2)
+                + (self.error_config.beam_divergence / 4.0).powi(2))
+            .sqrt(),
+            Variable::LeverArmX => self.error_config.lever_arm.x,
+            Variable::LeverArmY => self.error_config.lever_arm.y,
+            Variable::LeverArmZ => self.error_config.lever_arm.z,
+        }
     }
 
     /// Returns the partial derivative of this measurement.
@@ -452,6 +486,8 @@ impl Measurement {
                 config.boresight,
                 config.lever_arm,
                 self.las_scan_angle,
+                config.error,
+                self.normal,
             ))
         }
     }
@@ -464,6 +500,8 @@ impl Measurement {
             boresight,
             self.lever_arm,
             self.las_scan_angle,
+            self.error_config,
+            self.normal,
         )
     }
 
@@ -475,6 +513,8 @@ impl Measurement {
             self.boresight,
             self.lever_arm,
             self.las_scan_angle,
+            self.error_config,
+            self.normal,
         )
     }
 
@@ -486,6 +526,8 @@ impl Measurement {
             self.boresight,
             lever_arm,
             self.las_scan_angle,
+            self.error_config,
+            self.normal,
         )
     }
 
@@ -497,6 +539,8 @@ impl Measurement {
             self.boresight,
             self.lever_arm,
             self.las_scan_angle,
+            self.error_config,
+            self.normal,
         )
     }
 
@@ -557,5 +601,16 @@ impl Measurement {
             Dimension::Y => calculated.y,
             Dimension::Z => calculated.z,
         }
+    }
+
+    fn incidence_angle(&self) -> Option<f64> {
+        self.normal.map(|normal| {
+            let laser_direction = self.laser_direction();
+            (laser_direction.dot(&-normal) / (normal.norm() * laser_direction.norm())).acos()
+        })
+    }
+
+    fn laser_direction(&self) -> Vector3<f64> {
+        unimplemented!()
     }
 }

@@ -6,3 +6,12 @@ lever_arm = [0, 0, 0]
 roll = -1.5315439732476845
 pitch = -0.2429369449206635
 yaw = -1.4557712306633346
+
+[error]
+gnss = [0.05, 0.05, 0.1]
+imu = { roll = 4.36332313e-5, pitch = 4.36332313e-5, yaw = 8.726646e-5 }
+boresight = { roll = 1.745329e-5, pitch = 1.745329e-5, yaw = 6.981317e-5 }
+lever_arm = [0.02, 0.02, 0.02]
+range = 0.02
+beam_divergence = 0.25e-3
+angular_resolution = 1.745329e-5

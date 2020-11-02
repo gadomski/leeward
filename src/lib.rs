@@ -19,7 +19,7 @@ mod trajectory;
 mod utils;
 
 pub use boresight::Boresight;
-pub use config::Config;
+pub use config::{Config, ErrorConfig};
 pub use measurement::{Measurement, Uncertainty};
 pub use partial::{Dimension, Partial, Variable};
 pub use rotation::Rotation;
