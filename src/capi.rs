@@ -1,6 +1,6 @@
 //! Leeward's C API.
 
-use crate::{Config, Measurement, Trajectory};
+use crate::{Config, Lidar, Measurement, Trajectory};
 use anyhow::{anyhow, Error};
 use libc::c_char;
 use nalgebra::Vector3;
@@ -16,7 +16,7 @@ pub struct Leeward {
 /// A point structure.
 #[repr(C)]
 #[derive(Debug)]
-pub struct Lidar {
+pub struct LeewardLidar {
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -27,7 +27,7 @@ pub struct Lidar {
 /// A vector.
 #[repr(C)]
 #[derive(Debug)]
-pub struct Normal {
+pub struct LeewardNormal {
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -36,10 +36,10 @@ pub struct Normal {
 /// Structure containting information about the uncertainty calculation.
 #[repr(C)]
 #[derive(Debug)]
-pub struct Uncertainty {}
+pub struct LeewardUncertainty {}
 
 impl Leeward {
-    fn measurement(&self, lidar: &Lidar) -> Result<Measurement, Error> {
+    fn measurement(&self, lidar: &LeewardLidar) -> Result<Measurement, Error> {
         let sbet = self
             .trajectory
             .point(lidar.time)
@@ -48,15 +48,15 @@ impl Leeward {
     }
 }
 
-impl Uncertainty {
-    fn new(_measurement: Measurement) -> Uncertainty {
-        Uncertainty {}
+impl LeewardUncertainty {
+    fn new(_measurement: Measurement) -> LeewardUncertainty {
+        LeewardUncertainty {}
     }
 }
 
-impl From<&Lidar> for crate::Lidar {
-    fn from(lidar: &Lidar) -> crate::Lidar {
-        crate::Lidar {
+impl From<&LeewardLidar> for Lidar {
+    fn from(lidar: &LeewardLidar) -> Lidar {
+        Lidar {
             x: lidar.x,
             y: lidar.y,
             z: lidar.z,
@@ -108,8 +108,8 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 #[no_mangle]
 pub extern "C" fn leeward_uncertainty(
     leeward: *const Leeward,
-    lidar: *const Lidar,
-) -> *mut Uncertainty {
+    lidar: *const LeewardLidar,
+) -> *mut LeewardUncertainty {
     uncertainty(leeward, lidar, None)
 }
 
@@ -117,17 +117,17 @@ pub extern "C" fn leeward_uncertainty(
 #[no_mangle]
 pub extern "C" fn leeward_uncertainty_with_normal(
     leeward: *const Leeward,
-    lidar: *const Lidar,
-    normal: *const Normal,
-) -> *mut Uncertainty {
+    lidar: *const LeewardLidar,
+    normal: *const LeewardNormal,
+) -> *mut LeewardUncertainty {
     uncertainty(leeward, lidar, Some(normal))
 }
 
 fn uncertainty(
     leeward: *const Leeward,
-    lidar: *const Lidar,
-    normal: Option<*const Normal>,
-) -> *mut Uncertainty {
+    lidar: *const LeewardLidar,
+    normal: Option<*const LeewardNormal>,
+) -> *mut LeewardUncertainty {
     if leeward.is_null() {
         eprintln!("leeward c api error while computing uncertainty: leeward structure is null");
         return ptr::null_mut();
@@ -172,13 +172,13 @@ fn uncertainty(
         let normal = Vector3::new(normal.x, normal.y, normal.z);
         measurement.set_normal(normal);
     }
-    let uncertainty = Uncertainty::new(measurement);
+    let uncertainty = LeewardUncertainty::new(measurement);
     Box::into_raw(Box::new(uncertainty))
 }
 
 /// Deletes an leeward uncertainty structure.
 #[no_mangle]
-pub extern "C" fn leeward_uncertainty_free(uncertainty: *mut Uncertainty) {
+pub extern "C" fn leeward_uncertainty_free(uncertainty: *mut LeewardUncertainty) {
     if uncertainty.is_null() {
         // pass
     } else {
@@ -198,7 +198,7 @@ pub extern "C" fn leeward_free(leeward: *mut Leeward) {
 
 #[cfg(test)]
 mod tests {
-    use crate::capi;
+    use crate::capi::{self, LeewardLidar, LeewardNormal};
     use std::ffi::CString;
 
     #[test]
@@ -208,23 +208,23 @@ mod tests {
         let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
         assert!(!leeward.is_null());
 
-        let las = capi::Lidar {
+        let lidar = LeewardLidar {
             x: 320000.34,
             y: 4181319.35,
             z: 2687.58,
             scan_angle: 22.,
             time: 400825.8057,
         };
-        let uncertainty = capi::leeward_uncertainty(leeward, &las);
+        let uncertainty = capi::leeward_uncertainty(leeward, &lidar);
         assert!(!uncertainty.is_null());
         capi::leeward_uncertainty_free(uncertainty);
 
-        let normal = capi::Normal {
+        let normal = LeewardNormal {
             x: 0.,
             y: 0.,
             z: 1.,
         };
-        let uncertainty = capi::leeward_uncertainty_with_normal(leeward, &las, &normal);
+        let uncertainty = capi::leeward_uncertainty_with_normal(leeward, &lidar, &normal);
         assert!(!uncertainty.is_null());
         capi::leeward_uncertainty_free(uncertainty);
 

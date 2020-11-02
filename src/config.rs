@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// System and platform configuration.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
     pub utm_zone: u8,
-    pub use_las_scan_angle: bool,
+    pub derive_scan_angle: bool,
     pub lever_arm: Vector3<f64>,
     pub boresight: Rotation,
     pub error: ErrorConfig,
@@ -44,5 +44,17 @@ impl Config {
         let mut string = String::new();
         File::open(path).and_then(|mut f| f.read_to_string(&mut string))?;
         toml::from_str(&string).map_err(Error::from)
+    }
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            utm_zone: 0,
+            derive_scan_angle: true,
+            lever_arm: Vector3::default(),
+            boresight: Rotation::default(),
+            error: ErrorConfig::default(),
+        }
     }
 }

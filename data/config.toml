@@ -1,5 +1,5 @@
 utm_zone = 11
-use_las_scan_angle = false
+derive_scan_angle = true
 lever_arm = [0, 0, 0]
 
 [boresight]

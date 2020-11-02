@@ -1,5 +1,5 @@
 use crate::{Config, Dimension, Variable};
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use nalgebra::{Matrix3, Vector3};
 
 /// A lidar measurement.
@@ -16,7 +16,7 @@ pub struct Measurement {
 /// A lidar measurement.
 ///
 /// For now, this is almost always derived from a las point, but it doesn't have to be.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Lidar {
     pub x: f64,
     pub y: f64,
@@ -25,7 +25,7 @@ pub struct Lidar {
 }
 
 /// A gnss+ins measurement.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Platform {
     pub x: f64,
     pub y: f64,
@@ -50,6 +50,7 @@ pub trait Projectable {
     /// `Projectable` is implemented for `sbet::Point`.
     ///
     /// ```
+    /// use leeward::Projectable;
     /// let points = leeward::read_sbet("data/sbet.out").unwrap();
     /// let projected = points[0].project(11);
     /// ```
@@ -58,13 +59,6 @@ pub trait Projectable {
 
 impl Measurement {
     /// Creates a new measurement from a lidar point, a gnss+ins measurement, and a configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::{Config, Measurement};
-    /// let measurement = Measurement::new(las::Point::default(), sbet::Point::default(), Config::default());
-    /// ```
     pub fn new<L: Into<Lidar>, P: Projectable>(
         lidar: L,
         projectable: P,
@@ -80,16 +74,12 @@ impl Measurement {
         }
     }
 
+    /// Sets the lidar point for this measurement.
+    pub fn set_lidar<L: Into<Lidar>>(&mut self, lidar: L) {
+        self.lidar = lidar.into();
+    }
+
     /// Sets the config for this measurement.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use leeward::Config;
-    /// let measurement = Measurement::default();
-    /// let new_config = Config { derive_scan_angle: false, ..Default::default() };
-    /// measurement.set_config(new_config);
-    /// ```
     pub fn set_config(&mut self, config: Config) {
         self.config = config;
     }
@@ -97,100 +87,33 @@ impl Measurement {
     /// Sets the normal for this measurement.
     ///
     /// Should be calculated from some sort of curvature measurement, e.g. PDAL's `filters.normal`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use nalgebra::Vector3;
-    /// # use leeward::Measurement;
-    /// let measurement = Measurement::default();
-    /// measurement.set_normal(Vector3::new(0., 0., 1.));
-    /// ```
     pub fn set_normal(&mut self, normal: Vector3<f64>) {
         self.normal = Some(normal);
     }
 
     /// Returns the measured point, i.e. the las point.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::Lidar;
-    /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
-    /// let measurement = lidar.to_measurement();
-    /// let point = measurement.measured_point();
-    /// assert_eq!(point.x, 1.);
-    /// assert_eq!(point.y, 2.);
-    /// assert_eq!(point.z, 3.);
-    /// ```
     pub fn measured_point(&self) -> Vector3<f64> {
         Vector3::new(self.lidar.x, self.lidar.y, self.lidar.z)
     }
 
     /// Returns this measurement's projected gnss point.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::Platform;
-    /// let platform = Platform { x: 1., y: 2., z: 3., roll: 0., pitch: 0., yaw: 0. };
-    /// let measurement = platform.to_measurement();
-    /// let gnss = measurement.gnss();
-    /// assert_eq!(gnss.x, 1.);
-    /// assert_eq!(gnss.y, 2.);
-    /// assert_eq!(gnss.z, 3.);
-    /// ```
     pub fn gnss(&self) -> Vector3<f64> {
         Vector3::new(self.platform.x, self.platform.y, self.platform.z)
     }
 
     /// Returns this measurement's roll, pitch, and yaw as a rotation matrix.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::Platform;
-    /// let platform = Platform { x: 0., y: 0., z: 0., roll: 0., pitch: 0., yaw: std::f64::consts::PI };
-    /// let measurement = platform.to_measurement();
-    /// let imu = measurement.imu();
-    /// assert_eq!(imu, Matrix3::new(1., 0., 0., 0., -1., 0., 0., 0., 1.));
-    /// ```
     pub fn imu(&self) -> Matrix3<f64> {
         crate::rotation::rotation_matrix(self.platform.roll, self.platform.pitch, self.platform.yaw)
     }
 
     /// Returns the measured point in body frame.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Lidar, Platform};
-    /// let lidar = Lidar { x: 1., y: 2., z: 3., scan_angle: None };
-    /// let platform = Platform { x: 1., y: 2., z: 4., roll: 0., pitch: 0., yaw: 0. };
-    /// let measurement = Measurement::new(lidar, platform, Default::default());
-    /// let point = measurement.measured_point_in_body_frame();
-    /// assert_approx_eq!(point.x, 0.);
-    /// assert_approx_eq!(point.y, 0.);
-    /// assert_approx_eq!(point.z, 1.);
-    /// ```
     pub fn measured_point_in_body_frame(&self) -> Vector3<f64> {
-        self.imu().transpose() * (self.measured_point() - self.gnss())
+        self.imu().transpose()
+            * self.ned_to_enu().transpose()
+            * (self.measured_point() - self.gnss())
     }
 
     /// Returns the measured point in the scanner's coordinate system.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Lidar, Platform};
-    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
-    /// let platform = Platform { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
-    /// let measurement = Measurement::new(lidar, platform, Default::default());
-    /// let scanner = measurement.scanner_point().unwrap();
-    /// assert_approx_equal!(scanner.x, 1.);
-    /// assert_approx_equal!(scanner.y, 0.);
-    /// assert_approx_equal!(scanner.z, 0.);
-    /// ```
     pub fn scanner_point(&self) -> Result<Vector3<f64>, Error> {
         let range = self.range();
         let scan_angle = self.scan_angle()?;
@@ -204,37 +127,11 @@ impl Measurement {
     /// Returns this measurement's range.
     ///
     /// Range is derived from the vector distance between the measured (lidar) point and the scanner's origin.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Config, Measurement, measurement::{Lidar, Platform}};
-    /// let lidar = Lidar { x: 0., y: 0., z: 0. };
-    /// let platform = Platform { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
-    /// let config = Config { lever_arm: Vector3::new(0., 0., -1.), ..Default::default() };
-    /// let measurement = Measurement::new(lidar, platform, config);
-    /// assert_approx_equal!(measurement.range(), 2.);
-    /// ```
     pub fn range(&self) -> f64 {
         (self.measured_point() - self.scanner_origin()).norm()
     }
 
     /// Returns this measurement's scanner origin in global coordinates.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Config, measurement::{Platform, Lidar}};
-    /// use nalgebra::Vector3;
-    /// let platform = Platform { x: 1., y: 2., z: 3., roll: 0., pitch: 0., yaw: 0. };
-    /// let lidar = Lidar { x: 0., y: 0., z: 0. };
-    /// let config = Config { lever_arm: Vector3::new(0., 0., -1.), ..Default::default() };
-    /// let measurement = Measurement::new(lidar, platform, config);
-    /// let origin = measurement.scanner_origin();
-    /// assert_eq!(origin.x, 1.);
-    /// assert_eq!(origin.y, 2.);
-    /// assert_eq!(origin.z, 2.);
-    /// ```
     pub fn scanner_origin(&self) -> Vector3<f64> {
         self.gnss() + self.ned_to_enu() * self.imu() * (-self.lever_arm())
     }
@@ -254,54 +151,32 @@ impl Measurement {
     /// Returns this measurement's scan angle.
     ///
     /// The scan angle can be derived from the orientation of the platform, or from the lidar point itself.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Config, Measurement, measurement::{Lidar, Platform}};
-    ///
-    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: Some(45f64.to_radians())}
-    /// let platform = Platform { x: 0., y: 0., z: 0., roll: 0., pitch: 0., yaw: 0. };
-    /// let config = Config { derive_scan_angle: true, ..Default::default() };
-    /// let measurement = Measurement::new(lidar, platform, config);
-    /// assert_approx_eq!(0., measurement.scan_angle().unwrap());
-    ///
-    /// let config = Config { derive_scan_angle: false, ..Default::default() };
-    /// let measurement = Measurement::new(lidar, platform, config);
-    /// assert_approx_eq!(45., measurement.scan_angle().unwrap());
-    ///
-    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
-    /// let measurement = Measurement::new(lidar, platform, config);
-    /// assert!(measurement.scan_angle().is_err());
-    /// ```
     pub fn scan_angle(&self) -> Result<f64, Error> {
-        unimplemented!()
+        if self.config.derive_scan_angle {
+            let point = self.measured_point_in_scanner_frame();
+            Ok((point.z / self.range()).asin())
+        } else if let Some(scan_angle) = self.lidar.scan_angle {
+            Ok(scan_angle)
+        } else {
+            Err(anyhow!("derive_scan_angle=false and no scan angle"))
+        }
+    }
+
+    /// Returns the measured point in the scanner frame.
+    pub fn measured_point_in_scanner_frame(&self) -> Vector3<f64> {
+        self.boresight().transpose() * (self.measured_point_in_body_frame() + self.lever_arm())
     }
 
     /// Returns the point as calculated from the lidar equation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Lidar, GnssIns};
-    /// let lidar = Lidar { x: 0., y: 0., z: 0., scan_angle: None };
-    /// let platform = GnssIns::Projected { x: 0., y: 0., z: 1., roll: 0., pitch: 0., yaw: 0. };
-    /// let measurement = Measurement::new(lidar, platform, Default::default());
-    /// let calculated = measurement.calculated_point();
-    /// assert_approx_equal!(calculated.x, 0.);
-    /// assert_approx_equal!(calculated.y, 0.);
-    /// assert_approx_equal!(calculated.z, 1.);
-    /// ```
     pub fn calculated_point(&self) -> Result<Vector3<f64>, Error> {
         let scanner_point = self.scanner_point()?;
-        Ok(self.gnss() + self.imu() * (self.boresight() * scanner_point + self.lever_arm()))
+        Ok(self.gnss()
+            + self.ned_to_enu()
+                * self.imu()
+                * (self.boresight() * scanner_point - self.lever_arm()))
     }
 
     /// Returns the uncertainty structure for this measurement.
-    ///
-    /// # Examples
-    ///
-    /// FIXME
     pub fn uncertainty(&self) -> Result<Uncertainty, Error> {
         use nalgebra::{MatrixMN, MatrixN, U14, U3};
 
@@ -349,15 +224,6 @@ impl Measurement {
     }
 
     /// Returns the partial derivative of this measurement.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use leeward::{Measurement, Dimension, Variable};
-    /// let measurement = Measurement::default();
-    /// assert_approx_eq!(1., measurement.partial((Dimension::X, Variable::GnssX)));
-    /// assert_approx_eq!(0., measurement.partial((Dimension::Y, Variable::GnssX)));
-    /// ```
     pub fn partial<P: Into<(Dimension, Variable)>>(&self, partial: P) -> Result<f64, Error> {
         let cr = self.platform.roll.cos();
         let sr = self.platform.roll.sin();
@@ -581,10 +447,18 @@ impl Projectable for sbet::Point {
     }
 }
 
+impl Projectable for Platform {
+    fn project(&self, _utm_zone: u8) -> Platform {
+        *self
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Measurement;
+    use super::{Lidar, Measurement, Platform};
     use crate::Config;
+    use approx::assert_relative_eq;
+    use nalgebra::Vector3;
 
     #[test]
     fn from_las_and_sbet() {
@@ -592,5 +466,63 @@ mod tests {
         let sbet = crate::read_sbet("data/sbet.out").unwrap();
         let config = Config::from_path("data/config.toml").unwrap();
         let _ = Measurement::new(&las[0], sbet[0], config);
+    }
+
+    #[test]
+    fn scan_angle() {
+        let mut config = Config::default();
+        config.derive_scan_angle = true;
+        let lidar = Lidar {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+            scan_angle: Some(45f64.to_radians()),
+        };
+        let platform = Platform {
+            x: 0.,
+            y: 0.,
+            z: 1.,
+            roll: -std::f64::consts::FRAC_PI_2,
+            pitch: 0.,
+            yaw: -std::f64::consts::FRAC_PI_2,
+        };
+        let mut measurement = Measurement::new(lidar, platform, config);
+        assert_relative_eq!(measurement.scan_angle().unwrap(), 0.);
+
+        config.derive_scan_angle = false;
+        measurement.set_config(config);
+        assert_relative_eq!(measurement.scan_angle().unwrap(), 45f64.to_radians());
+
+        let lidar = Lidar {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+            scan_angle: None,
+        };
+        measurement.set_lidar(lidar);
+        assert!(measurement.scan_angle().is_err());
+    }
+
+    #[test]
+    fn measured_point_in_scanner_frame() {
+        let lidar = Lidar {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+            scan_angle: Some(45f64.to_radians()),
+        };
+        let platform = Platform {
+            x: 0.,
+            y: 0.,
+            z: 1.,
+            roll: -std::f64::consts::FRAC_PI_2,
+            pitch: 0.,
+            yaw: -std::f64::consts::FRAC_PI_2,
+        };
+        let measurement = Measurement::new(lidar, platform, Config::default());
+        assert_relative_eq!(
+            Vector3::new(1., 0., 0.),
+            measurement.measured_point_in_scanner_frame()
+        );
     }
 }

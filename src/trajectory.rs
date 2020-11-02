@@ -97,7 +97,7 @@ impl Trajectory {
     /// # use leeward::{Config, Trajectory};
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
-    /// let measurements = trajectory.read_las("data/points.las", &config).unwrap();
+    /// let measurements = trajectory.read_las("data/points.las", config).unwrap();
     /// ```
     pub fn read_las<P: AsRef<Path>>(
         &self,
@@ -124,7 +124,7 @@ impl Trajectory {
     /// let points = leeward::read_las("data/points.las").unwrap();
     /// let config = Config::from_path("data/config.toml").unwrap();
     /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
-    /// let measurement = trajectory.measurement(&points[0], &config).unwrap();
+    /// let measurement = trajectory.measurement(&points[0], config).unwrap();
     /// ```
     pub fn measurement(&self, las: &las::Point, config: Config) -> Result<Measurement, Error> {
         let time = las
