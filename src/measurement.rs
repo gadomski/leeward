@@ -93,6 +93,13 @@ impl Measurement {
         }
     }
 
+    /// Sets the normal for this measurement.
+    ///
+    /// Should be calculated from some sort of curvature measurement, e.g. PDAL's `filters.normal`.
+    pub fn set_normal(&mut self, normal: Vector3<f64>) {
+        self.normal = Some(normal);
+    }
+
     /// Returns the las point.
     ///
     /// # Examples
