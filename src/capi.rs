@@ -227,7 +227,6 @@ mod tests {
         let uncertainty = capi::leeward_uncertainty_with_normal(leeward, &lidar, &normal);
         assert!(!uncertainty.is_null());
         capi::leeward_uncertainty_free(uncertainty);
-
         capi::leeward_free(leeward);
     }
 
