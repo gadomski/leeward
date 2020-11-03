@@ -21,13 +21,13 @@ pub struct Config {
 /// Error configuration.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
 pub struct ErrorConfig {
-    pub imu: Rotation,
     pub gnss: Vector3<f64>,
-    pub boresight: Rotation,
     pub lever_arm: Vector3<f64>,
     pub range: f64,
     pub beam_divergence: f64,
     pub angular_resolution: f64,
+    pub boresight: Rotation,
+    pub imu: Rotation,
 }
 
 impl Config {
