@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 edition = "2018"
 
+[features]
+workaround_rls_vscode_bug_586 = [] 
+
 [lib]
 crate-type = ["lib", "staticlib"]
 
@@ -21,3 +24,6 @@ utm = "0.1"
 approx = "0.4"
 clap = "2.33"
 csv = "1.1"
+
+[build-dependencies]
+cbindgen = "0.15"
