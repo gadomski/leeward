@@ -39,6 +39,7 @@ pub struct Platform {
 #[derive(Debug)]
 pub struct Uncertainty {
     pub covariance: Matrix3<f64>,
+    pub includes_incidence_angle: bool,
 }
 
 /// A trait implemented by things that can be turned into a projected (UTM) Gnss+Ins measurement.
@@ -87,8 +88,8 @@ impl Measurement {
     /// Sets the normal for this measurement.
     ///
     /// Should be calculated from some sort of curvature measurement, e.g. PDAL's `filters.normal`.
-    pub fn set_normal(&mut self, normal: Vector3<f64>) {
-        self.normal = Some(normal);
+    pub fn set_normal(&mut self, x: f64, y: f64, z: f64) {
+        self.normal = Some(Vector3::new(x, y, z));
     }
 
     /// Returns the measured point, i.e. the las point.
@@ -189,7 +190,10 @@ impl Measurement {
             errors[(col, col)] = self.error(variable).powi(2);
         }
         let covariance = &jacobian * errors * jacobian.transpose();
-        Ok(Uncertainty { covariance })
+        Ok(Uncertainty {
+            covariance,
+            includes_incidence_angle: self.incidence_angle().is_some(),
+        })
     }
 
     /// Returns this measurement's error for the given variable.
@@ -397,7 +401,8 @@ impl Measurement {
     }
 
     fn laser_direction(&self) -> Vector3<f64> {
-        unimplemented!()
+        let laser_vector = self.measured_point() - self.scanner_origin();
+        laser_vector / laser_vector.norm()
     }
 
     pub fn finite_difference<P: Into<(Dimension, Variable)>>(&self, _partial: P) -> Option<f64> {
@@ -406,6 +411,17 @@ impl Measurement {
 
     pub fn calculated_point_in_body_frame(&self) -> Vector3<f64> {
         unimplemented!()
+    }
+}
+
+impl Lidar {
+    pub fn new(x: f64, y: f64, z: f64, scan_angle: Option<f64>) -> Lidar {
+        Lidar {
+            x,
+            y,
+            z,
+            scan_angle,
+        }
     }
 }
 
@@ -423,6 +439,19 @@ impl From<&las::Point> for Lidar {
 impl From<las::Point> for Lidar {
     fn from(las: las::Point) -> Lidar {
         Lidar::from(&las)
+    }
+}
+
+impl Platform {
+    pub fn new(x: f64, y: f64, z: f64, roll: f64, pitch: f64, yaw: f64) -> Platform {
+        Platform {
+            x,
+            y,
+            z,
+            roll,
+            pitch,
+            yaw,
+        }
     }
 }
 
@@ -456,10 +485,9 @@ impl Projectable for Platform {
 #[cfg(test)]
 mod tests {
     use super::{Lidar, Measurement, Platform};
-    use crate::{Config, Rotation};
+    use crate::Config;
     use approx::assert_relative_eq;
     use nalgebra::Vector3;
-    use std::f64::consts::FRAC_PI_2;
 
     #[test]
     fn from_las_and_sbet() {
@@ -473,22 +501,9 @@ mod tests {
     fn scan_angle() {
         let mut config = Config::default();
         config.derive_scan_angle = true;
-        let lidar = Lidar {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-            scan_angle: Some(45f64.to_radians()),
-        };
-        let platform = Platform {
-            x: 0.,
-            y: 0.,
-            z: 1.,
-            roll: 0.,
-            pitch: 0.,
-            yaw: 0.,
-        };
+        let lidar = Lidar::new(0., 0., 0., Some(45f64.to_radians()));
+        let platform = Platform::new(0., 0., 1., 0., 0., 0.);
         let mut config = Config::default();
-        config.boresight = Rotation::new(-FRAC_PI_2, 0., -FRAC_PI_2);
         let mut measurement = Measurement::new(lidar, platform, config);
         assert_relative_eq!(measurement.scan_angle().unwrap(), 0.);
 
@@ -496,34 +511,16 @@ mod tests {
         measurement.set_config(config);
         assert_relative_eq!(measurement.scan_angle().unwrap(), 45f64.to_radians());
 
-        let lidar = Lidar {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-            scan_angle: None,
-        };
+        let lidar = Lidar::new(0., 0., 0., None);
         measurement.set_lidar(lidar);
         assert!(measurement.scan_angle().is_err());
     }
 
     #[test]
     fn measured_point_in_scanner_frame() {
-        let lidar = Lidar {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-            scan_angle: Some(45f64.to_radians()),
-        };
-        let platform = Platform {
-            x: 0.,
-            y: 0.,
-            z: 1.,
-            roll: 0.,
-            pitch: 0.,
-            yaw: 0.,
-        };
-        let mut config = Config::default();
-        config.boresight = Rotation::new(-FRAC_PI_2, 0., -FRAC_PI_2);
+        let lidar = Lidar::new(0., 0., 0., Some(45f64.to_radians()));
+        let platform = Platform::new(0., 0., 1., 0., 0., 0.);
+        let config = Config::default();
         let measurement = Measurement::new(lidar, platform, config);
         assert_relative_eq!(
             Vector3::new(1., 0., 0.),
@@ -533,6 +530,18 @@ mod tests {
 
     #[test]
     fn incidence_angle() {
-        unimplemented!()
+        let lidar = Lidar::new(0., 0., 0., None);
+        let platform = Platform::new(0., 0., 1., 0., 0., 0.);
+        let config = Config::default();
+        let mut measurement = Measurement::new(lidar, platform, config);
+        assert_eq!(None, measurement.incidence_angle());
+        measurement.set_normal(0., 0., 1.);
+        assert_relative_eq!(0., measurement.incidence_angle().unwrap());
+
+        measurement.set_normal(0., 0.5f64.sqrt(), 0.5f64.sqrt());
+        assert_relative_eq!(
+            std::f64::consts::FRAC_PI_4,
+            measurement.incidence_angle().unwrap()
+        );
     }
 }

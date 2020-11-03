@@ -15,7 +15,7 @@
 //! ```
 //! # use leeward::Measurement;
 //! let measurement = Measurement::default();
-//! let uncertainty = measurement.uncertainty();
+//! let uncertainty = measurement.uncertainty().unwrap();
 //! let vertical_error = uncertainty.covariance[(2, 2)].sqrt();
 //! ```
 //!
@@ -24,11 +24,13 @@
 //!
 //! ```
 //! # use leeward::Measurement;
-//! use nalgebra::Vector3;
-//! let measurement = Measurement::default();
-//! measurement.set_normal(Vector3::new(0., 0., 1.));
+//! let mut measurement = Measurement::default();
+//! let uncertainty = measurement.uncertainty().unwrap();
+//! assert!(!uncertainty.includes_incidence_angle);
+//!
+//! measurement.set_normal(0., 0., 1.);
 //! let incidence_angle = measurement.incidence_angle();
-//! let uncertainty = measurement.uncertainty();
+//! let uncertainty = measurement.uncertainty().unwrap();
 //! assert!(uncertainty.includes_incidence_angle);
 //! ```
 

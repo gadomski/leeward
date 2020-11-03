@@ -3,7 +3,6 @@
 use crate::{Config, Lidar, Measurement, Trajectory};
 use anyhow::{anyhow, Error};
 use libc::c_char;
-use nalgebra::Vector3;
 use std::{ffi::CStr, ptr};
 
 /// An opaque structure for computing TPU.
@@ -169,8 +168,7 @@ fn uncertainty(
                 return ptr::null_mut();
             }
         };
-        let normal = Vector3::new(normal.x, normal.y, normal.z);
-        measurement.set_normal(normal);
+        measurement.set_normal(normal.x, normal.y, normal.z);
     }
     let uncertainty = LeewardUncertainty::new(measurement);
     Box::into_raw(Box::new(uncertainty))
