@@ -17,8 +17,8 @@ namespace pdal
         virtual void addArgs(ProgramArgs &args);
         virtual void filter(PointView &view);
 
-        std::string m_sbet_path;
-        std::string m_config_path;
+        std::string m_sbet;
+        std::string m_config;
         Dimension::Id m_xUncertainty;
         Dimension::Id m_yUncertainty;
         Dimension::Id m_horizontalUncertainty;

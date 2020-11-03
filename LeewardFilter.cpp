@@ -24,21 +24,21 @@ namespace pdal
 
     void LeewardFilter::addArgs(ProgramArgs &args)
     {
-        args.add("sbet_path", "Path to the sbet file", this->m_sbet_path);
-        args.add("config_path", "Path to the sbet file", this->m_config_path);
+        args.add("sbet", "Path to the sbet file", this->m_sbet);
+        args.add("config", "Path to the sbet file", this->m_config);
     }
 
     void LeewardFilter::filter(PointView &view)
     {
-        if (this->m_sbet_path.empty())
+        if (this->m_sbet.empty())
         {
             throw pdal_error("No SBET path provided, exiting...");
         }
-        if (this->m_config_path.empty())
+        if (this->m_config.empty())
         {
             throw pdal_error("No config path provided, exiting...");
         }
-        auto leeward = leeward_new(this->m_sbet_path.c_str(), this->m_config_path.c_str());
+        auto leeward = leeward_new(this->m_sbet.c_str(), this->m_config.c_str());
         if (!leeward)
         {
             throw pdal_error("Error when creating leeward, exiting...");
