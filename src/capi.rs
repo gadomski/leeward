@@ -35,7 +35,14 @@ pub struct LeewardNormal {
 /// Structure containting information about the uncertainty calculation.
 #[repr(C)]
 #[derive(Debug)]
-pub struct LeewardUncertainty {}
+pub struct LeewardUncertainty {
+    x: f64,
+    y: f64,
+    horizontal: f64,
+    vertical: f64,
+    total: f64,
+    incidence_angle: f64,
+}
 
 impl Leeward {
     fn measurement(&self, lidar: &LeewardLidar) -> Result<Measurement, Error> {
@@ -48,8 +55,16 @@ impl Leeward {
 }
 
 impl LeewardUncertainty {
-    fn new(_measurement: Measurement) -> LeewardUncertainty {
-        LeewardUncertainty {}
+    fn new(measurement: Measurement) -> Result<LeewardUncertainty, Error> {
+        let uncertainty = measurement.uncertainty()?;
+        Ok(LeewardUncertainty {
+            x: uncertainty.x,
+            y: uncertainty.y,
+            horizontal: uncertainty.horizontal,
+            vertical: uncertainty.vertical,
+            total: uncertainty.total,
+            incidence_angle: uncertainty.incidence_angle.unwrap_or_else(|| std::f64::NAN),
+        })
     }
 }
 
@@ -170,7 +185,13 @@ fn uncertainty(
         };
         measurement.set_normal(normal.x, normal.y, normal.z);
     }
-    let uncertainty = LeewardUncertainty::new(measurement);
+    let uncertainty = match LeewardUncertainty::new(measurement) {
+        Ok(uncertainty) => uncertainty,
+        Err(err) => {
+            eprintln!("leeward c api error while computing uncertainty: {}", err);
+            return ptr::null_mut();
+        }
+    };
     Box::into_raw(Box::new(uncertainty))
 }
 

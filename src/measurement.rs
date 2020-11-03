@@ -39,7 +39,12 @@ pub struct Platform {
 #[derive(Debug)]
 pub struct Uncertainty {
     pub covariance: Matrix3<f64>,
-    pub includes_incidence_angle: bool,
+    pub x: f64,
+    pub y: f64,
+    pub horizontal: f64,
+    pub vertical: f64,
+    pub total: f64,
+    pub incidence_angle: Option<f64>,
 }
 
 /// A trait implemented by things that can be turned into a projected (UTM) Gnss+Ins measurement.
@@ -192,7 +197,12 @@ impl Measurement {
         let covariance = &jacobian * errors * jacobian.transpose();
         Ok(Uncertainty {
             covariance,
-            includes_incidence_angle: self.incidence_angle().is_some(),
+            x: covariance[(0, 0)].sqrt(),
+            y: covariance[(1, 1)].sqrt(),
+            horizontal: (covariance[(0, 0)] + covariance[(1, 1)]).sqrt(),
+            vertical: covariance[(2, 2)].sqrt(),
+            total: (covariance[(0, 0)] + covariance[(1, 1)] + covariance[(2, 2)]).sqrt(),
+            incidence_angle: self.incidence_angle(),
         })
     }
 

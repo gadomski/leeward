@@ -26,12 +26,12 @@
 //! # use leeward::Measurement;
 //! let mut measurement = Measurement::default();
 //! let uncertainty = measurement.uncertainty().unwrap();
-//! assert!(!uncertainty.includes_incidence_angle);
+//! assert!(uncertainty.incidence_angle.is_none());
 //!
 //! measurement.set_normal(0., 0., 1.);
 //! let incidence_angle = measurement.incidence_angle();
 //! let uncertainty = measurement.uncertainty().unwrap();
-//! assert!(uncertainty.includes_incidence_angle);
+//! assert!(uncertainty.incidence_angle.is_some());
 //! ```
 
 mod boresight;
