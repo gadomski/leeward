@@ -5,7 +5,7 @@ use nalgebra::{Matrix3, Vector3};
 /// A lidar measurement.
 ///
 /// More than just a point, a `Measurement` contains system configuration and platform orientation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Measurement {
     lidar: Lidar,
     platform: Platform,
@@ -16,7 +16,7 @@ pub struct Measurement {
 /// A lidar measurement.
 ///
 /// For now, this is almost always derived from a las point, but it doesn't have to be.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Lidar {
     pub x: f64,
     pub y: f64,
@@ -25,7 +25,7 @@ pub struct Lidar {
 }
 
 /// A gnss+ins measurement.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Platform {
     pub x: f64,
     pub y: f64,
@@ -389,7 +389,7 @@ impl Measurement {
         })
     }
 
-    fn incidence_angle(&self) -> Option<f64> {
+    pub fn incidence_angle(&self) -> Option<f64> {
         self.normal.map(|normal| {
             let laser_direction = self.laser_direction();
             (laser_direction.dot(&-normal) / (normal.norm() * laser_direction.norm())).acos()
@@ -456,9 +456,10 @@ impl Projectable for Platform {
 #[cfg(test)]
 mod tests {
     use super::{Lidar, Measurement, Platform};
-    use crate::Config;
+    use crate::{Config, Rotation};
     use approx::assert_relative_eq;
     use nalgebra::Vector3;
+    use std::f64::consts::FRAC_PI_2;
 
     #[test]
     fn from_las_and_sbet() {
@@ -482,10 +483,12 @@ mod tests {
             x: 0.,
             y: 0.,
             z: 1.,
-            roll: -std::f64::consts::FRAC_PI_2,
+            roll: 0.,
             pitch: 0.,
-            yaw: -std::f64::consts::FRAC_PI_2,
+            yaw: 0.,
         };
+        let mut config = Config::default();
+        config.boresight = Rotation::new(-FRAC_PI_2, 0., -FRAC_PI_2);
         let mut measurement = Measurement::new(lidar, platform, config);
         assert_relative_eq!(measurement.scan_angle().unwrap(), 0.);
 
@@ -515,14 +518,21 @@ mod tests {
             x: 0.,
             y: 0.,
             z: 1.,
-            roll: -std::f64::consts::FRAC_PI_2,
+            roll: 0.,
             pitch: 0.,
-            yaw: -std::f64::consts::FRAC_PI_2,
+            yaw: 0.,
         };
-        let measurement = Measurement::new(lidar, platform, Config::default());
+        let mut config = Config::default();
+        config.boresight = Rotation::new(-FRAC_PI_2, 0., -FRAC_PI_2);
+        let measurement = Measurement::new(lidar, platform, config);
         assert_relative_eq!(
             Vector3::new(1., 0., 0.),
             measurement.measured_point_in_scanner_frame()
         );
+    }
+
+    #[test]
+    fn incidence_angle() {
+        unimplemented!()
     }
 }

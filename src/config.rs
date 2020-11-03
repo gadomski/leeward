@@ -49,11 +49,12 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Config {
+        use std::f64::consts::FRAC_PI_2;
         Config {
             utm_zone: 0,
             derive_scan_angle: true,
             lever_arm: Vector3::default(),
-            boresight: Rotation::default(),
+            boresight: Rotation::new(-FRAC_PI_2, 0., -FRAC_PI_2),
             error: ErrorConfig::default(),
         }
     }

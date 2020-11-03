@@ -1,4 +1,4 @@
-//! Lidar Equation Engine With Already Racked Derivatives
+//! Lidar Equation Engine With Already Racked Derivatives (aka leeward)
 //!
 //! # Examples
 //!
@@ -8,6 +8,28 @@
 //!
 //! ```
 //! let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+//! ```
+//!
+//! Each measurement has an `uncertainty` method which produces the error covariance matrix:
+//!
+//! ```
+//! # use leeward::Measurement;
+//! let measurement = Measurement::default();
+//! let uncertainty = measurement.uncertainty();
+//! let vertical_error = uncertainty.covariance[(2, 2)].sqrt();
+//! ```
+//!
+//! The range error of a lidar shot is heavily influenced by topography.
+//! To include topography information, set the measurement's normal; this will be used to compute laser incidence angle and topography-induced uncertainty:
+//!
+//! ```
+//! # use leeward::Measurement;
+//! use nalgebra::Vector3;
+//! let measurement = Measurement::default();
+//! measurement.set_normal(Vector3::new(0., 0., 1.));
+//! let incidence_angle = measurement.incidence_angle();
+//! let uncertainty = measurement.uncertainty();
+//! assert!(uncertainty.includes_incidence_angle);
 //! ```
 
 mod boresight;
