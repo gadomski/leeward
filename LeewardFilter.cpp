@@ -14,11 +14,11 @@ namespace pdal
 
     void LeewardFilter::addDimensions(PointLayoutPtr layout)
     {
-        this->m_sigmaX = layout->registerOrAssignDim("SigmaX", Dimension::Type::Float);
-        this->m_sigmaY = layout->registerOrAssignDim("SigmaY", Dimension::Type::Float);
-        this->m_sigmaHorizontal = layout->registerOrAssignDim("SigmaHorizontal", Dimension::Type::Float);
-        this->m_sigmaVertical = layout->registerOrAssignDim("SigmaVertical", Dimension::Type::Float);
-        this->m_sigmaMagnitude = layout->registerOrAssignDim("SigmaMagnitude", Dimension::Type::Float);
+        this->m_xUncertainty = layout->registerOrAssignDim("XUncertainty", Dimension::Type::Float);
+        this->m_yUncertainty = layout->registerOrAssignDim("YUncertainty", Dimension::Type::Float);
+        this->m_horizontalUncertainty = layout->registerOrAssignDim("HorizontalUncertainty", Dimension::Type::Float);
+        this->m_verticalUncertainty = layout->registerOrAssignDim("VerticalUncertainty", Dimension::Type::Float);
+        this->m_uncertainty = layout->registerOrAssignDim("Uncertainty", Dimension::Type::Float);
         this->m_incidenceAngle = layout->registerOrAssignDim("IncidenceAngle", Dimension::Type::Float);
     }
 
@@ -45,23 +45,29 @@ namespace pdal
         }
         for (PointId id = 0; id < view.size(); ++id)
         {
-            auto x = view.getFieldAs<double>(Dimension::Id::X, id);
-            auto y = view.getFieldAs<double>(Dimension::Id::Y, id);
-            auto z = view.getFieldAs<double>(Dimension::Id::Z, id);
-            auto scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
-            auto gps_time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
-            auto nx = view.getFieldAs<float>(Dimension::Id::NormalX, id);
-            auto ny = view.getFieldAs<float>(Dimension::Id::NormalY, id);
-            auto nz = view.getFieldAs<float>(Dimension::Id::NormalZ, id);
-            auto tpu = leeward_tpu(leeward, x, y, z, scan_angle, gps_time, nx, ny, nz);
-            view.setField(this->m_sigmaX, id, tpu->sigma_x);
-            view.setField(this->m_sigmaY, id, tpu->sigma_y);
-            view.setField(this->m_sigmaHorizontal, id, tpu->sigma_horizontal);
-            view.setField(this->m_sigmaVertical, id, tpu->sigma_vertical);
-            view.setField(this->m_sigmaMagnitude, id, tpu->sigma_magnitude);
-            view.setField(this->m_incidenceAngle, id, tpu->incidence_angle * 180 / M_PI);
-            leeward_tpu_delete(tpu);
+            struct LeewardLidar lidar;
+            lidar.x = view.getFieldAs<double>(Dimension::Id::X, id);
+            lidar.y = view.getFieldAs<double>(Dimension::Id::Y, id);
+            lidar.z = view.getFieldAs<double>(Dimension::Id::Z, id);
+            lidar.scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
+            lidar.time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
+            struct LeewardNormal normal;
+            normal.x = view.getFieldAs<float>(Dimension::Id::NormalX, id);
+            normal.y = view.getFieldAs<float>(Dimension::Id::NormalY, id);
+            normal.z = view.getFieldAs<float>(Dimension::Id::NormalZ, id);
+            auto uncertainty = leeward_uncertainty_with_normal(leeward, &lidar, &normal);
+            if (!uncertainty)
+            {
+                throw pdal_error("Error when creating uncertainty, exiting...");
+            }
+            view.setField(this->m_xUncertainty, id, uncertainty->x);
+            view.setField(this->m_yUncertainty, id, uncertainty->y);
+            view.setField(this->m_horizontalUncertainty, id, uncertainty->horizontal);
+            view.setField(this->m_verticalUncertainty, id, uncertainty->vertical);
+            view.setField(this->m_uncertainty, id, uncertainty->total);
+            view.setField(this->m_incidenceAngle, id, uncertainty->incidence_angle * 180 / M_PI);
+            leeward_uncertainty_free(uncertainty);
         }
-        leeward_delete(leeward);
+        leeward_free(leeward);
     }
 } // namespace pdal
