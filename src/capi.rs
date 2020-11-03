@@ -71,7 +71,7 @@ impl From<&LeewardLidar> for Lidar {
 /// # Examples
 ///
 /// ```c
-/// let leeward = leeward_new("data/sbet.out", "data/config.toml");
+/// Leeward leeward = leeward_new("data/sbet.out", "data/config.toml");
 /// assert(leeward);
 /// leeward_free(leeward);
 /// ```
