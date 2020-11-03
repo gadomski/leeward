@@ -9,7 +9,6 @@ crate-type = ["lib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
-cbindgen = "0.15"
 las = "0.7"
 libc = "0.2"
 nalgebra = { version = "0.23", features = ["serde-serialize"] }
