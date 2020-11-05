@@ -42,7 +42,7 @@ impl From<&Measurement> for CsvMeasurement {
         let las_body = measurement.measured_point_in_body_frame();
         let gnss = measurement.gnss();
         let calculated = measurement.calculated_point().unwrap();
-        let calculated_body = measurement.calculated_point_in_body_frame();
+        let calculated_body = measurement.calculated_point_in_body_frame().unwrap();
         let scanner = measurement.scanner_point().unwrap();
         let range = measurement.range();
         let scan_angle = measurement.scan_angle().unwrap().to_degrees();

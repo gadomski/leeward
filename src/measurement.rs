@@ -419,8 +419,8 @@ impl Measurement {
         unimplemented!()
     }
 
-    pub fn calculated_point_in_body_frame(&self) -> Vector3<f64> {
-        unimplemented!()
+    pub fn calculated_point_in_body_frame(&self) -> Result<Vector3<f64>, Error> {
+        Ok(self.boresight() * self.scanner_point()? + self.lever_arm())
     }
 }
 
