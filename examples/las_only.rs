@@ -66,7 +66,7 @@ fn locate_platform(points: &[Point], config: Config) -> Platform {
     let mut platform = Platform {
         x,
         y,
-        z,
+        z: z + 4000.,
         roll: 0.,
         pitch: 0.,
         yaw: 0.,
