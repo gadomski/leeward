@@ -1,4 +1,4 @@
-use clap::{App, Arg};
+use clap::App;
 use csv::Writer;
 use las::{Read, Reader};
 use leeward::Trajectory;
@@ -15,10 +15,12 @@ struct CsvPoint {
 
 fn main() {
     let matches = App::new("trajectory")
-        .arg(Arg::with_name("sbet").help("sbet file").index(1))
-        .arg(Arg::with_name("utm-zone").help("utm zone").index(2))
-        .arg(Arg::with_name("outfile").help("out csv file").index(3))
-        .arg(Arg::from_usage("<las>... 'one or more las files'"))
+        .args_from_usage(
+            "<sbet> 'sbet file'
+            <utm-zone> 'utm zone'
+            <outfile> 'outfile'
+            <las>... 'one or more las files'",
+        )
         .get_matches();
     let utm_zone: u8 = matches.value_of("utm-zone").unwrap().parse().unwrap();
     println!("Reading trajectory");
