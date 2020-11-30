@@ -56,18 +56,21 @@ namespace pdal
             normal.y = view.getFieldAs<float>(Dimension::Id::NormalY, id);
             normal.z = view.getFieldAs<float>(Dimension::Id::NormalZ, id);
             auto uncertainty = leeward_uncertainty_with_normal(leeward, &lidar, &normal);
-            if (!uncertainty)
+            if (uncertainty)
             {
-                throw pdal_error("Error when creating uncertainty, exiting...");
+                view.setField(this->m_xUncertainty, id, uncertainty->x);
+                view.setField(this->m_yUncertainty, id, uncertainty->y);
+                view.setField(this->m_horizontalUncertainty, id, uncertainty->horizontal);
+                view.setField(this->m_verticalUncertainty, id, uncertainty->vertical);
+                view.setField(this->m_uncertainty, id, uncertainty->total);
+                view.setField(this->m_incidenceAngle, id, uncertainty->incidence_angle * 180 / M_PI);
+                leeward_uncertainty_free(uncertainty);
             }
-            view.setField(this->m_xUncertainty, id, uncertainty->x);
-            view.setField(this->m_yUncertainty, id, uncertainty->y);
-            view.setField(this->m_horizontalUncertainty, id, uncertainty->horizontal);
-            view.setField(this->m_verticalUncertainty, id, uncertainty->vertical);
-            view.setField(this->m_uncertainty, id, uncertainty->total);
-            view.setField(this->m_incidenceAngle, id, uncertainty->incidence_angle * 180 / M_PI);
-            leeward_uncertainty_free(uncertainty);
+            else
+            {
+                std::cerr << "Error when creating uncertainty, skipping point..." << std::endl;
+            }
         }
         leeward_free(leeward);
-    }
+    } // namespace pdal
 } // namespace pdal
