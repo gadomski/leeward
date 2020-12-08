@@ -74,8 +74,11 @@ fn main() {
         .unwrap();
 
     let mut writer = Writer::from_writer(io::stdout());
-    for measurement in measurements.iter().step_by(step_by) {
+    for (i, measurement) in measurements.iter().step_by(step_by).enumerate() {
         let measurement = CsvMeasurement::from(measurement);
         writer.serialize(measurement).unwrap();
+        if i % 10000 == 0 {
+            writer.flush().unwrap();
+        }
     }
 }

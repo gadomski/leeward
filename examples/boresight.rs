@@ -31,8 +31,20 @@ fn main() {
                 .short("d")
                 .long("decimate"),
         )
+        .arg(
+            Arg::with_name("offset")
+                .help("time offset")
+                .takes_value(true)
+                .short("o")
+                .long("offset")
+                .allow_hyphen_values(true),
+        )
         .get_matches();
-    let trajectory = Trajectory::from_path(matches.value_of("sbet").unwrap()).unwrap();
+    let mut trajectory = Trajectory::from_path(matches.value_of("sbet").unwrap()).unwrap();
+    if let Some(offset) = matches.value_of("offset") {
+        let offset: f64 = offset.parse().unwrap();
+        trajectory = trajectory.with_offset(offset).unwrap();
+    }
     let config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
     let step_by = matches
         .value_of("decimate")

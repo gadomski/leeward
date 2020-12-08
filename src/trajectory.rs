@@ -68,6 +68,20 @@ impl Trajectory {
         }
     }
 
+    /// Creates a new trajectory from this trajectory, but with each point offset by the given number of seconds.
+    pub fn with_offset(&self, offset: f64) -> Result<Trajectory, Error> {
+        let points = self
+            .points
+            .iter()
+            .map(|p| {
+                let mut p = *p;
+                p.time += offset;
+                p
+            })
+            .collect();
+        Trajectory::new(points)
+    }
+
     /// Returns the number of points in this trajectory.
     ///
     /// # Examples
