@@ -3,6 +3,7 @@
 use clap::{App, Arg};
 use las::{Read, Reader};
 use leeward::{Boresight, Config, Trajectory, Variable};
+use std::{fs::File, io::Write};
 
 fn main() {
     let matches = App::new("boresight")
@@ -39,6 +40,13 @@ fn main() {
                 .long("offset")
                 .allow_hyphen_values(true),
         )
+        .arg(
+            Arg::with_name("result")
+                .help("result file to write")
+                .takes_value(true)
+                .short("r")
+                .long("result"),
+        )
         .get_matches();
     let mut trajectory = Trajectory::from_path(matches.value_of("sbet").unwrap()).unwrap();
     if let Some(offset) = matches.value_of("offset") {
@@ -73,4 +81,8 @@ fn main() {
         )
         .unwrap();
     println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
+    if let Some(result) = matches.value_of("result") {
+        let mut result = File::create(result).unwrap();
+        writeln!(result, "{}", toml::to_string_pretty(&adjustment).unwrap()).unwrap();
+    }
 }

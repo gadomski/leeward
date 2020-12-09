@@ -1,6 +1,7 @@
 use crate::{Config, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
+use serde::Serialize;
 use std::io::{Sink, Write};
 
 /// cbindgen:ignore
@@ -18,7 +19,7 @@ pub struct Boresight<W: Write> {
 }
 
 /// The results of a boresight adjustment.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Adjustment {
     pub config: Config,
     pub rmse: f64,
