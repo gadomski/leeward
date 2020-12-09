@@ -3,7 +3,15 @@
 use clap::{App, Arg};
 use las::{Read, Reader};
 use leeward::{Boresight, Config, Trajectory, Variable};
+use serde::Serialize;
 use std::{fs::File, io::Write};
+
+#[derive(Debug, Serialize)]
+struct BoresightResult {
+    rmse: f64,
+    offset: f64,
+    iterations: usize,
+}
 
 fn main() {
     let matches = App::new("boresight")
@@ -82,7 +90,12 @@ fn main() {
         .unwrap();
     println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
     if let Some(result) = matches.value_of("result") {
-        let mut result = File::create(result).unwrap();
-        writeln!(result, "{}", toml::to_string_pretty(&adjustment).unwrap()).unwrap();
+        let mut file = File::create(result).unwrap();
+        let result = BoresightResult {
+            offset: matches.value_of("offset").unwrap_or("0").parse().unwrap(),
+            iterations: adjustment.iterations,
+            rmse: adjustment.rmse,
+        };
+        writeln!(file, "{}", toml::to_string_pretty(&result).unwrap()).unwrap();
     }
 }

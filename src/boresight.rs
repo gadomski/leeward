@@ -1,7 +1,6 @@
 use crate::{Config, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
-use serde::Serialize;
 use std::io::{Sink, Write};
 
 /// cbindgen:ignore
@@ -19,11 +18,12 @@ pub struct Boresight<W: Write> {
 }
 
 /// The results of a boresight adjustment.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct Adjustment {
-    pub config: Config,
     pub rmse: f64,
+    pub iterations: usize,
     pub residuals: DVector<f64>,
+    pub config: Config,
 }
 
 impl Boresight<Sink> {
@@ -94,6 +94,7 @@ impl<W: Write> Boresight<W> {
         let mut iteration = 0;
         loop {
             write!(self.output, "Iter #{}, rmse={}", iteration, adjustment.rmse)?;
+            adjustment.iterations = iteration;
             let jacobian = self.jacobian(variables, use_numerical_differentiation)?;
             let values = self.values(variables)?;
             for (variable, value) in variables.iter().zip(&values) {
@@ -223,6 +224,7 @@ impl Adjustment {
         }
         Ok(Adjustment {
             config: config,
+            iterations: 0,
             rmse: residuals.norm(),
             residuals,
         })
