@@ -1,6 +1,7 @@
 use crate::{Config, Dimension, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{Matrix3, Vector3};
+use serde::Serialize;
 
 /// A lidar measurement.
 ///
@@ -11,6 +12,27 @@ pub struct Measurement {
     platform: Platform,
     config: Config,
     normal: Option<Vector3<f64>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Variables {
+    x: f64,
+    y: f64,
+    z: f64,
+    gnss_x: f64,
+    gnss_y: f64,
+    gnss_z: f64,
+    roll: f64,
+    pitch: f64,
+    yaw: f64,
+    boresight_roll: f64,
+    boresight_pitch: f64,
+    boresight_yaw: f64,
+    range: f64,
+    scan_angle: f64,
+    lever_arm_x: f64,
+    lever_arm_y: f64,
+    lever_arm_z: f64,
 }
 
 /// A lidar measurement.
@@ -421,6 +443,30 @@ impl Measurement {
 
     pub fn calculated_point_in_body_frame(&self) -> Result<Vector3<f64>, Error> {
         Ok(self.boresight() * self.scanner_point()? + self.lever_arm())
+    }
+
+    pub fn variables(&self) -> Result<Variables, Error> {
+        let las = self.measured_point();
+        let gnss = self.gnss();
+        Ok(Variables {
+            x: las.x,
+            y: las.y,
+            z: las.z,
+            gnss_x: gnss.x,
+            gnss_y: gnss.y,
+            gnss_z: gnss.z,
+            roll: self.platform.roll,
+            pitch: self.platform.pitch,
+            yaw: self.platform.yaw,
+            boresight_roll: self.config.boresight.roll,
+            boresight_pitch: self.config.boresight.pitch,
+            boresight_yaw: self.config.boresight.yaw,
+            range: self.range(),
+            scan_angle: self.scan_angle()?,
+            lever_arm_x: self.config.lever_arm.x,
+            lever_arm_y: self.config.lever_arm.y,
+            lever_arm_z: self.config.lever_arm.z,
+        })
     }
 }
 
