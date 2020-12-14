@@ -12,6 +12,9 @@ struct CsvMeasurement {
     x: f64,
     y: f64,
     z: f64,
+    scan_angle: f64,
+    scaled_time: Option<i64>,
+    gps_time: Option<f64>,
 }
 
 impl From<&Measurement> for CsvMeasurement {
@@ -21,6 +24,9 @@ impl From<&Measurement> for CsvMeasurement {
             x: point.x,
             y: point.y,
             z: point.z,
+            scan_angle: measurement.scan_angle().unwrap(),
+            scaled_time: None,
+            gps_time: None,
         }
     }
 }
@@ -60,6 +66,13 @@ fn main() {
                 .long("offset")
                 .allow_hyphen_values(true),
         )
+        .arg(
+            Arg::with_name("take")
+                .help("take")
+                .takes_value(true)
+                .short("t")
+                .long("take"),
+        )
         .get_matches();
     let mut trajectory = Trajectory::from_path(matches.value_of("sbet").unwrap()).unwrap();
     if let Some(offset) = matches.value_of("offset") {
@@ -67,18 +80,27 @@ fn main() {
         trajectory = trajectory.with_offset(offset).unwrap();
     }
     let config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
-    let step_by = matches
+    let step = matches
         .value_of("decimate")
         .unwrap_or_else(|| "1")
         .parse()
         .unwrap();
     let mut writer = Writer::from_writer(io::stdout());
     let mut reader = Reader::from_path(matches.value_of("las").unwrap()).unwrap();
-    for result in reader.points().step_by(step_by) {
+    let iter = reader.points();
+    let iter = if let Some(take) = matches.value_of("take") {
+        Box::new(iter.take(take.parse().unwrap()))
+            as Box<dyn Iterator<Item = Result<las::Point, las::Error>>>
+    } else {
+        Box::new(iter) as Box<dyn Iterator<Item = Result<las::Point, las::Error>>>
+    };
+    for result in iter.step_by(step) {
         let las = result.unwrap();
         match trajectory.measurement(&las, config) {
             Ok(measurement) => {
-                let csv_measurement = CsvMeasurement::from(&measurement);
+                let mut csv_measurement = CsvMeasurement::from(&measurement);
+                csv_measurement.gps_time = Some(las.gps_time.unwrap());
+                csv_measurement.scaled_time = Some(trajectory.scaled_time(las.gps_time.unwrap()));
                 writer.serialize(csv_measurement).unwrap();
             }
             Err(err) => eprintln!("{}", err),
