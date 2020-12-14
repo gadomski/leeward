@@ -32,6 +32,15 @@ pub struct LeewardNormal {
     pub z: f64,
 }
 
+/// A vector.
+#[repr(C)]
+#[derive(Debug)]
+pub struct LeewardBodyFrame {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
 /// Structure containting information about the uncertainty calculation.
 #[repr(C)]
 #[derive(Debug)]
@@ -51,6 +60,17 @@ impl Leeward {
             .point(lidar.time)
             .ok_or_else(|| anyhow!("no sbet point found for time: {}", lidar.time))?;
         Ok(Measurement::new(lidar, sbet, self.config))
+    }
+}
+
+impl LeewardBodyFrame {
+    fn new(measurement: Measurement) -> LeewardBodyFrame {
+        let body_frame = measurement.measured_point_in_body_frame();
+        LeewardBodyFrame {
+            x: body_frame.x,
+            y: body_frame.y,
+            z: body_frame.z,
+        }
     }
 }
 
@@ -135,6 +155,45 @@ pub extern "C" fn leeward_uncertainty_with_normal(
     normal: *const LeewardNormal,
 ) -> *mut LeewardUncertainty {
     uncertainty(leeward, lidar, Some(normal))
+}
+
+/// Calculates the lidar point in the body frame of the plane.
+#[no_mangle]
+pub extern "C" fn leeward_body_frame(
+    leeward: *const Leeward,
+    lidar: *const LeewardLidar,
+) -> *mut LeewardBodyFrame {
+    if leeward.is_null() {
+        eprintln!("leeward c api error while computing uncertainty: leeward structure is null");
+        return ptr::null_mut();
+    }
+    let leeward = match unsafe { leeward.as_ref() } {
+        Some(leeward) => leeward,
+        None => {
+            eprintln!("leeward c api error while computing uncertainty: unable to get reference to leeward structure");
+            return ptr::null_mut();
+        }
+    };
+    if lidar.is_null() {
+        eprintln!("leeward c api error while computing uncertainty: lidar point is null");
+        return ptr::null_mut();
+    }
+    let lidar = match unsafe { lidar.as_ref() } {
+        Some(lidar) => lidar,
+        None => {
+            eprintln!("leeward c api error while computing uncertainty: unable to get reference to lidar structure");
+            return ptr::null_mut();
+        }
+    };
+    let measurement = match leeward.measurement(lidar) {
+        Ok(measurement) => measurement,
+        Err(e) => {
+            eprintln!("leeward c api error while computing body frame: {}", e);
+            return ptr::null_mut();
+        }
+    };
+    let body_frame = LeewardBodyFrame::new(measurement);
+    Box::into_raw(Box::new(body_frame))
 }
 
 fn uncertainty(
