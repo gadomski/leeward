@@ -39,6 +39,9 @@ pub struct LeewardBodyFrame {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+    pub roll: f64,
+    pub pitch: f64,
+    pub yaw: f64,
 }
 
 /// Structure containting information about the uncertainty calculation.
@@ -64,13 +67,17 @@ impl Leeward {
 }
 
 impl LeewardBodyFrame {
-    fn new(measurement: Measurement) -> LeewardBodyFrame {
+    fn new(measurement: Measurement) -> Result<LeewardBodyFrame, Error> {
         let body_frame = measurement.measured_point_in_body_frame();
-        LeewardBodyFrame {
+        let variables = measurement.variables()?;
+        Ok(LeewardBodyFrame {
             x: body_frame.x,
             y: body_frame.y,
             z: body_frame.z,
-        }
+            roll: variables.roll,
+            pitch: variables.pitch,
+            yaw: variables.yaw,
+        })
     }
 }
 
@@ -192,7 +199,13 @@ pub extern "C" fn leeward_body_frame(
             return ptr::null_mut();
         }
     };
-    let body_frame = LeewardBodyFrame::new(measurement);
+    let body_frame = match LeewardBodyFrame::new(measurement) {
+        Ok(body_frame) => body_frame,
+        Err(e) => {
+            eprintln!("leeward c api error while computing body frame: {}", e);
+            return ptr::null_mut();
+        }
+    };
     Box::into_raw(Box::new(body_frame))
 }
 
@@ -261,6 +274,16 @@ pub extern "C" fn leeward_uncertainty_free(uncertainty: *mut LeewardUncertainty)
         // pass
     } else {
         let _ = unsafe { Box::from_raw(uncertainty) };
+    }
+}
+
+/// Deletes an leeward body frame structure.
+#[no_mangle]
+pub extern "C" fn leeward_body_frame_free(body_frame: *mut LeewardBodyFrame) {
+    if body_frame.is_null() {
+        // pass
+    } else {
+        let _ = unsafe { Box::from_raw(body_frame) };
     }
 }
 
