@@ -64,7 +64,7 @@ namespace pdal
             }
             else
             {
-                std::cerr << "Error when creating uncertainty, skipping point..." << std::endl;
+                std::cerr << "Error when creating body frame, skipping point..." << std::endl;
             }
         }
         leeward_free(leeward);
