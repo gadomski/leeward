@@ -14,6 +14,7 @@ crate-type = ["lib", "staticlib"]
 anyhow = "1.0"
 las = "0.7"
 libc = "0.2"
+geo-types = "0.6"
 nalgebra = { version = "0.23", features = ["serde-serialize"] }
 proj = "0.20"
 sbet = { git = "https://github.com/gadomski/sbet-rs" }

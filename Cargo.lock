@@ -396,6 +396,7 @@ dependencies = [
  "cbindgen",
  "clap",
  "csv",
+ "geo-types",
  "las",
  "libc",
  "nalgebra",
