@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use sbet::{Point, Reader};
 use std::{collections::HashMap, path::Path};
 
@@ -20,27 +20,22 @@ impl Trajectory {
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Trajectory, Error> {
         let reader = Reader::from_path(path)?;
-        let mut scale = std::f64::MAX;
-        let mut last_time = 0.;
+        let mut scale = 0.;
+        let mut last_time: Option<f64> = None;
         let mut points = vec![];
         for result in reader {
             let point = result?;
             let time = point.time;
-            scale = (time - last_time).min(scale);
-            last_time = time;
+            if let Some(last_time) = last_time {
+                scale = (time - last_time).max(scale);
+            }
+            last_time = Some(time);
             points.push(point);
         }
         let mut map = HashMap::new();
         for point in points {
             let index = index(point.time, scale);
-            if let Some(previous) = map.insert(index, point) {
-                return Err(anyhow!(
-                    "duplicate sbet point for index={}, previous.time={}, point.time={}",
-                    index,
-                    previous.time,
-                    point.time
-                ));
-            }
+            map.insert(index, point);
         }
         Ok(Trajectory { points: map, scale })
     }
