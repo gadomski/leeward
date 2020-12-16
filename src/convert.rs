@@ -87,11 +87,11 @@ impl GeodeticPoint {
     ///
     /// TODO
     pub fn to_ecef(&self, ellipsoid: Ellipsoid) -> GeocentricPoint {
+        let n = ellipsoid.n(self.latitude);
         GeocentricPoint(Vector3::new(
-            (ellipsoid.n(self.latitude) + self.height) * self.latitude.cos() * self.longitude.cos(),
-            (ellipsoid.n(self.latitude) + self.height) * self.latitude.cos() * self.longitude.sin(),
-            (ellipsoid.b2() / ellipsoid.a2() * ellipsoid.n(self.latitude) + self.height)
-                * self.latitude.sin(),
+            (n + self.height) * self.latitude.cos() * self.longitude.cos(),
+            (n + self.height) * self.latitude.cos() * self.longitude.sin(),
+            (ellipsoid.b2() / ellipsoid.a2() * n + self.height) * self.latitude.sin(),
         ))
     }
 }
