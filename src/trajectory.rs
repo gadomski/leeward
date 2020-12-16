@@ -4,9 +4,7 @@ use std::path::Path;
 
 /// A plane's trajectory.
 #[derive(Debug)]
-pub struct Trajectory {
-    points: Vec<Point>,
-}
+pub struct Trajectory(Vec<Point>);
 
 impl Trajectory {
     /// Reads a trajectory from a path.
@@ -19,8 +17,6 @@ impl Trajectory {
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Trajectory, Error> {
         let reader = Reader::from_path(path)?;
-        Ok(Trajectory {
-            points: reader.collect::<Result<_, Error>>()?,
-        })
+        Ok(Trajectory(reader.collect::<Result<_, Error>>()?))
     }
 }
