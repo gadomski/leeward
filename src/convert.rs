@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Error};
-use nalgebra::Vector3;
+use nalgebra::{Matrix3, Vector3};
 use proj::Proj;
+use serde::Deserialize;
+use std::ops::Sub;
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
     a: 6378137.,
@@ -14,6 +16,7 @@ pub struct GeodeticConverter {
 }
 
 /// An ellipsoid definition.
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Ellipsoid {
     a: f64,
     _f: f64,
@@ -96,9 +99,44 @@ impl GeodeticPoint {
     }
 }
 
-impl From<las::Point> for ProjectedPoint {
-    fn from(las: las::Point) -> ProjectedPoint {
+impl From<&las::Point> for ProjectedPoint {
+    fn from(las: &las::Point) -> ProjectedPoint {
         ProjectedPoint(Vector3::new(las.x, las.y, las.z))
+    }
+}
+
+impl From<&sbet::Point> for GeodeticPoint {
+    fn from(sbet: &sbet::Point) -> GeodeticPoint {
+        GeodeticPoint {
+            latitude: sbet.latitude,
+            longitude: sbet.longitude,
+            height: sbet.altitude,
+        }
+    }
+}
+
+impl GeodeticPoint {
+    pub fn to_navigation_frame(&self, vector: Vector3<f64>) -> Vector3<f64> {
+        let matrix = Matrix3::new(
+            -self.latitude.sin() * self.longitude.cos(),
+            -self.latitude.sin() * self.longitude.sin(),
+            self.latitude.cos(),
+            -self.longitude.sin(),
+            self.longitude.cos(),
+            0.,
+            -self.latitude.cos() * self.longitude.cos(),
+            -self.latitude.cos() * self.longitude.sin(),
+            -self.latitude.sin(),
+        );
+        matrix * vector
+    }
+}
+
+impl Sub for GeocentricPoint {
+    type Output = Vector3<f64>;
+
+    fn sub(self, other: GeocentricPoint) -> Vector3<f64> {
+        self.0 - other.0
     }
 }
 
