@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Error};
+use nalgebra::Vector3;
 use proj::Proj;
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
@@ -8,15 +9,8 @@ pub const WGS_84: Ellipsoid = Ellipsoid {
 };
 
 /// Used to convert coordinates between UTM, Lat/Lon, ECEF, and body frame.
-pub struct Converter {
+pub struct GeodeticConverter {
     proj: Proj,
-}
-
-/// A 3D point.
-pub struct Point {
-    x: f64,
-    y: f64,
-    z: f64,
 }
 
 /// An ellipsoid definition.
@@ -26,53 +20,62 @@ pub struct Ellipsoid {
     b: f64, // this is derived but that's ok
 }
 
-impl Converter {
+/// A projected point.
+pub struct ProjectedPoint(Vector3<f64>);
+
+/// A geodetic point.
+pub struct GeodeticPoint {
+    latitude: f64,
+    longitude: f64,
+    height: f64,
+}
+
+/// A geocentric point.
+pub struct GeocentricPoint(Vector3<f64>);
+
+impl GeodeticConverter {
     /// Creates a new converter to convert from the argument to WGS84 ellipsoidal.
     ///
-    /// TODO should be able to handle other targets
+    /// TODO should be able to handle other ellipsoids.
     ///
     /// # Examples
     ///
-    /// ```
-    /// # use leeward::Converter;
-    /// let converter = Converter::new("EPSG:32611");
-    /// ```
-    pub fn new(from: &str) -> Result<Converter, Error> {
-        Ok(Converter {
-            proj: Proj::new_known_crs(from, "EPSG:4326", None)
+    ///  TODO
+    pub fn new(utm_zone: u8) -> Result<GeodeticConverter, Error> {
+        let from = format!("EPSG:326{:02}", utm_zone);
+        Ok(GeodeticConverter {
+            proj: Proj::new_known_crs(&from, "EPSG:4326", None)
                 .ok_or(anyhow!("could not create proj from {} to {}"))?,
         })
     }
 
-    /// Converts a point.
+    /// Converts a point to geodetic.
     ///
     /// X and Y will be in radians.
     ///
     /// # Examples
     ///
     /// TODO
-    pub fn convert<P: Into<Point>>(&self, point: P) -> Result<Point, Error> {
+    pub fn convert<P: Into<ProjectedPoint>>(&self, point: P) -> Result<GeodeticPoint, Error> {
         let point = point.into();
-        let converted = self.proj.convert((point.x, point.y))?;
-        let mut point = Point::from_2d(converted, point.z);
-        point.x = point.x.to_radians();
-        point.y = point.y.to_radians();
-        Ok(point)
+        let converted = self.proj.convert((point.0.x, point.0.y))?;
+        Ok(GeodeticPoint::new(
+            converted.x().to_radians(),
+            converted.y().to_radians(),
+            point.0.z,
+        ))
     }
 }
 
-impl Point {
-    /// Creates a point from a 2d geo_types point.
-    ///
+impl GeodeticPoint {
     /// # Examples
     ///
     /// TODO
-    pub fn from_2d<P: Into<geo_types::Point<f64>>>(point: P, z: f64) -> Point {
-        let point = point.into();
-        Point {
-            x: point.x(),
-            y: point.y(),
-            z: z,
+    pub fn new(longitude: f64, latitude: f64, height: f64) -> GeodeticPoint {
+        GeodeticPoint {
+            longitude,
+            latitude,
+            height,
         }
     }
 
@@ -83,22 +86,19 @@ impl Point {
     /// # Examples
     ///
     /// TODO
-    pub fn to_ecef(&self, ellipsoid: Ellipsoid) -> Point {
-        Point {
-            x: (ellipsoid.n(self.y) + self.z) * self.y.cos() * self.x.cos(),
-            y: (ellipsoid.n(self.y) + self.z) * self.y.cos() * self.x.sin(),
-            z: (ellipsoid.b2() / ellipsoid.a2() * ellipsoid.n(self.y) + self.z) * self.y.sin(),
-        }
+    pub fn to_ecef(&self, ellipsoid: Ellipsoid) -> GeocentricPoint {
+        GeocentricPoint(Vector3::new(
+            (ellipsoid.n(self.latitude) + self.height) * self.latitude.cos() * self.longitude.cos(),
+            (ellipsoid.n(self.latitude) + self.height) * self.latitude.cos() * self.longitude.sin(),
+            (ellipsoid.b2() / ellipsoid.a2() * ellipsoid.n(self.latitude) + self.height)
+                * self.latitude.sin(),
+        ))
     }
 }
 
-impl From<las::Point> for Point {
-    fn from(las: las::Point) -> Point {
-        Point {
-            x: las.x,
-            y: las.y,
-            z: las.z,
-        }
+impl From<las::Point> for ProjectedPoint {
+    fn from(las: las::Point) -> ProjectedPoint {
+        ProjectedPoint(Vector3::new(las.x, las.y, las.z))
     }
 }
 
@@ -134,14 +134,15 @@ mod tests {
         assert_eq!(point.y, 4181319.35);
         assert_eq!(point.z, 2687.59);
 
-        let converter = Converter::new("EPSG:32611").unwrap();
-        let point = converter.convert(point).unwrap();
-        assert_eq!(point.x.to_degrees(), -119.043462374326);
-        assert_eq!(point.y.to_degrees(), 37.76149775590434);
+        let converter = GeodeticConverter::new(11).unwrap();
+        let geodetic_point = converter.convert(point).unwrap();
+        assert_eq!(geodetic_point.longitude.to_degrees(), -119.043462374326);
+        assert_eq!(geodetic_point.latitude.to_degrees(), 37.76149775590434);
+        assert_eq!(geodetic_point.height, 2687.59);
 
-        let point = point.to_ecef(WGS_84);
-        assert_relative_eq!(point.x, -2452.031e3, max_relative = 1.0);
-        assert_relative_eq!(point.y, -4415.678e3, max_relative = 1.0);
-        assert_relative_eq!(point.z, 3886.195e3, max_relative = 1.0);
+        let geocentric_point = geodetic_point.to_ecef(WGS_84);
+        assert_relative_eq!(geocentric_point.0.x, -2452.031e3, max_relative = 1.0);
+        assert_relative_eq!(geocentric_point.0.y, -4415.678e3, max_relative = 1.0);
+        assert_relative_eq!(geocentric_point.0.z, 3886.195e3, max_relative = 1.0);
     }
 }
