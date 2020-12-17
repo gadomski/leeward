@@ -59,7 +59,11 @@ pub fn projected_to_geodetic(point: Point, utm_zone: u8) -> Point {
 /// let geocentric = convert::geodetic_to_ecef(geodetic);
 /// ```
 pub fn geodetic_to_ecef(point: Point) -> Point {
-    unimplemented!()
+    let n = WGS_84.n(point.y);
+    let x = (n + point.z) * point.y.cos() * point.x.cos();
+    let y = (n + point.z) * point.y.cos() * point.x.sin();
+    let z = (WGS_84.b2 / WGS_84.a2 * n + point.z) * point.y.sin();
+    Point::new(x, y, z)
 }
 
 /// An ellipsoid.
