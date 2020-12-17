@@ -162,6 +162,24 @@ impl Measurement {
         self.las.gps_time.unwrap()
     }
 
+    /// Returns this measurement in the body frame of the aircraft.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point.clone(), config).unwrap();
+    /// let body_frame = measurement.body_frame();
+    /// ```
     pub fn body_frame(&self) -> Point {
         unimplemented!()
     }
