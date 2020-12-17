@@ -10,3 +10,4 @@ pub use measurement::{measurements, Measurement};
 pub use trajectory::Trajectory;
 
 pub type Point = nalgebra::Vector3<f64>;
+pub type Matrix = nalgebra::Matrix3<f64>;

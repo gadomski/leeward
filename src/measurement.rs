@@ -1,6 +1,5 @@
-use crate::{Config, Trajectory};
+use crate::{Config, Point, Trajectory};
 use anyhow::{anyhow, Error};
-use nalgebra::{Matrix3, Vector3};
 use std::path::Path;
 
 /// Reads in a vector of measurements from files.
@@ -77,43 +76,9 @@ impl Measurement {
         self.sbet.time
     }
 
-    pub fn body_frame(&self) -> Vector3<f64> {
+    pub fn body_frame(&self) -> Point {
         unimplemented!()
     }
-}
-
-fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
-    Matrix3::new(
-        yaw.cos(),
-        -yaw.sin(),
-        0.,
-        yaw.sin(),
-        yaw.cos(),
-        0.,
-        0.,
-        0.,
-        1.,
-    ) * Matrix3::new(
-        pitch.cos(),
-        0.,
-        pitch.sin(),
-        0.,
-        1.,
-        0.,
-        -pitch.sin(),
-        0.,
-        pitch.cos(),
-    ) * Matrix3::new(
-        1.,
-        0.,
-        0.,
-        0.,
-        roll.cos(),
-        -roll.sin(),
-        0.,
-        roll.sin(),
-        roll.cos(),
-    )
 }
 
 #[cfg(test)]
