@@ -8,6 +8,32 @@ pub const WGS_84: Ellipsoid = Ellipsoid {
     b2: 6356752.3142 * 6356752.3142,
 };
 
+/// Converts a projected (UTM) point to body frame.
+///
+/// A convenience method to chain together some other functions in this mod.
+///
+/// # Examples
+///
+/// ```
+/// # use leeward::{convert, Point};
+/// let point = Point::new(320000.34, 4181319.35, 2687.59);
+/// let plane = Point::new(-119.0434f64.to_radians(), 37.7614978f64.to_radians(), 2687.59);
+/// let body = convert::projected_to_body(point, plane, 0.0, 0.0, 0.4, 11); // roll, pitch, yaw, utm_zone
+/// ```
+pub fn projected_to_body(
+    point: Point,
+    plane: Point,
+    roll: f64,
+    pitch: f64,
+    yaw: f64,
+    utm_zone: u8,
+) -> Point {
+    let geodetic = projected_to_geodetic(point, utm_zone);
+    let geocentric = geodetic_to_ecef(geodetic);
+    let navigation = ecef_to_navigation(geocentric, plane);
+    navigation_to_body(navigation, roll, pitch, yaw)
+}
+
 /// Converts from projected (UTM) coordinates into geodetic coordinates.
 ///
 /// The geodetic coordinates are in radians.
