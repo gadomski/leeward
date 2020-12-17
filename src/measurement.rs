@@ -196,6 +196,8 @@ impl Measurement {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     #[test]
     fn measurements() {
         let measurements =
@@ -205,5 +207,16 @@ mod tests {
         assert_eq!(320000.34, measurement.x());
         assert_eq!(4181319.35, measurement.y());
         assert_eq!(2687.59, measurement.z());
+    }
+
+    #[test]
+    fn body_frame() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let measurement = &measurements[0];
+        let body_frame = measurement.body_frame();
+        assert_relative_eq!(-405.710, body_frame.x, max_relative = 1e-3);
+        assert_relative_eq!(1780.085, body_frame.y, max_relative = 1e-3);
+        assert_relative_eq!(4287.566, body_frame.z, max_relative = 1e-3);
     }
 }
