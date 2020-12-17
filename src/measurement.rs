@@ -19,7 +19,15 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     las: P1,
     config: P2,
 ) -> Result<Vec<Measurement>, Error> {
-    unimplemented!()
+    use las::Read;
+    let trajectory = Trajectory::from_path(sbet)?;
+    let config = Config::from_path(config)?;
+    let mut measurements = Vec::new();
+    for result in las::Reader::from_path(las)?.points() {
+        let point = result?;
+        measurements.push(Measurement::new(&trajectory, point, config)?);
+    }
+    Ok(measurements)
 }
 
 /// A measurement combines trajectory information with the lidar point.
@@ -110,20 +118,14 @@ fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-
     #[test]
-    fn body_frame() {
+    fn measurements() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let measurement = &measurements[0];
         assert_eq!(400825.80649573973, measurement.time());
-        assert_eq!(320024.07, measurement.x());
-        assert_eq!(4181361.65, measurement.y());
-        assert_eq!(2680.53, measurement.z());
-        let body_frame = measurement.body_frame();
-        assert_relative_eq!(-396.095, body_frame.x);
-        assert_relative_eq!(1741.869, body_frame.y);
-        assert_relative_eq!(4295.007, body_frame.z);
+        assert_eq!(320000.34, measurement.x());
+        assert_eq!(4181319.35, measurement.y());
+        assert_eq!(2687.59, measurement.z());
     }
 }

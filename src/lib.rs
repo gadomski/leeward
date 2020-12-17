@@ -6,7 +6,7 @@ mod measurement;
 mod trajectory;
 
 pub use config::Config;
-pub use measurement::Measurement;
+pub use measurement::{measurements, Measurement};
 pub use trajectory::Trajectory;
 
 pub type Point = nalgebra::Vector3<f64>;

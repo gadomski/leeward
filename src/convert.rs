@@ -15,7 +15,7 @@ pub const WGS_84: Ellipsoid = Ellipsoid {
 /// # Examples
 ///
 /// ```
-/// use leeward::convert;
+/// use leeward::{convert, Point};
 /// let projected = Point::new(320000.34, 4181319.35, 2687.59);
 /// let geodetic = convert::projected_to_geodetic(projected, 11); // 11 is the UTM zone
 /// ```
@@ -54,8 +54,8 @@ pub fn projected_to_geodetic(point: Point, utm_zone: u8) -> Point {
 /// # Examples
 ///
 /// ```
-/// use leeward::convert;
-/// let geodetic = Point::new(-119.0434.to_radians(), 37.7614978.to_radians(), 2687.59);
+/// use leeward::{convert, Point};
+/// let geodetic = Point::new(-119.0434f64.to_radians(), 37.7614978f64.to_radians(), 2687.59);
 /// let geocentric = convert::geodetic_to_ecef(geodetic);
 /// ```
 pub fn geodetic_to_ecef(point: Point) -> Point {
