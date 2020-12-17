@@ -1,4 +1,4 @@
-use crate::Point;
+use crate::{Matrix, Point};
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
     a: 6378137.,
@@ -66,6 +66,35 @@ pub fn geodetic_to_ecef(point: Point) -> Point {
     Point::new(x, y, z)
 }
 
+/// Converts an ECEF point to navigation frame.
+///
+/// # Examples
+///
+/// ```
+/// use leeward::{convert, Point};
+/// let ecef = Point::new(-2452031., -4415678., 3886195.);
+/// let plane = Point::new(-119.0434, 37.7615, 2687.59);
+/// let navigation = convert::ecef_to_navigation(ecef, plane);
+/// ```
+pub fn ecef_to_navigation(point: Point, plane: Point) -> Point {
+    let matrix = ecef_to_navigation_matrix(plane);
+    matrix * point
+}
+
+/// Converts a navigation frame point to body frame.
+///
+/// # Examples
+///
+/// ```
+/// use leeward::{convert, Point};
+/// let navigation = Point::new(-1000., -200., 4000.);
+/// let body = convert::navigation_to_body(navigation, 0.0, 0.0, 0.4); // roll, pitch, yaw
+/// ```
+pub fn navigation_to_body(point: Point, roll: f64, pitch: f64, yaw: f64) -> Point {
+    let matrix = body_to_navigation_matrix(roll, pitch, yaw);
+    matrix.transpose() * point
+}
+
 /// An ellipsoid.
 ///
 /// Some of the fields are derived, but required to minimise computations when using the ellipsoid.
@@ -82,6 +111,42 @@ impl Ellipsoid {
     fn n(&self, latitude: f64) -> f64 {
         self.a2 / (self.a2 * latitude.cos().powi(2) + self.b2 * latitude.sin().powi(2)).sqrt()
     }
+}
+
+fn ecef_to_navigation_matrix(point: Point) -> Matrix {
+    let latitude = point.y;
+    let longitude = point.x;
+    Matrix::new(
+        -latitude.sin() * longitude.cos(),
+        -latitude.sin() * longitude.sin(),
+        latitude.cos(),
+        -longitude.sin(),
+        longitude.cos(),
+        0.,
+        -latitude.cos() * longitude.cos(),
+        -latitude.cos() * longitude.sin(),
+        -latitude.sin(),
+    )
+}
+
+fn body_to_navigation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix {
+    let cy = yaw.cos();
+    let sy = yaw.sin();
+    let cp = pitch.cos();
+    let sp = pitch.sin();
+    let cr = roll.cos();
+    let sr = roll.sin();
+    Matrix::new(
+        cy * cp,
+        cy * sp * sr - sy * cr,
+        cy * sp * cr + sy * sr,
+        sy * cp,
+        sy * sp * sr + cy * cr,
+        sy * sp * cr - cy * sr,
+        -sp,
+        cp * sr,
+        cp * cr,
+    )
 }
 
 #[cfg(test)]

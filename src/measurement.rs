@@ -1,4 +1,4 @@
-use crate::{Config, Point, Trajectory};
+use crate::{convert, Config, Point, Trajectory};
 use anyhow::{anyhow, Error};
 use std::path::Path;
 
@@ -181,7 +181,12 @@ impl Measurement {
     /// let body_frame = measurement.body_frame();
     /// ```
     pub fn body_frame(&self) -> Point {
-        unimplemented!()
+        let projected = Point::new(self.las.x, self.las.y, self.las.z);
+        let geodetic = convert::projected_to_geodetic(projected, self.config.utm_zone);
+        let geocentric = convert::geodetic_to_ecef(geodetic);
+        let plane = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
+        let navigation = convert::ecef_to_navigation(geocentric, plane);
+        convert::navigation_to_body(navigation, self.sbet.roll, self.sbet.pitch, self.sbet.yaw)
     }
 }
 
