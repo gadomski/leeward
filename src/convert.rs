@@ -77,8 +77,9 @@ pub fn geodetic_to_ecef(point: Point) -> Point {
 /// let navigation = convert::ecef_to_navigation(ecef, plane);
 /// ```
 pub fn ecef_to_navigation(point: Point, plane: Point) -> Point {
+    let plane_ecef = geodetic_to_ecef(plane);
     let matrix = ecef_to_navigation_matrix(plane);
-    matrix * point
+    matrix * (point - plane_ecef)
 }
 
 /// Converts a navigation frame point to body frame.
