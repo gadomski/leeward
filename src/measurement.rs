@@ -42,7 +42,19 @@ impl Measurement {
     ///
     /// # Examples
     ///
-    /// TODO
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point, config).unwrap();
+    /// ```
     pub fn new(
         trajectory: &Trajectory,
         las: las::Point,
@@ -60,20 +72,94 @@ impl Measurement {
         })
     }
 
+    /// Returns the x coordinate of this measurement, from the las point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point.clone(), config).unwrap();
+    /// assert_eq!(point.x, measurement.x());
+    /// ```
     pub fn x(&self) -> f64 {
         self.las.x
     }
 
+    /// Returns the y coordinate of this measurement, from the las point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point.clone(), config).unwrap();
+    /// assert_eq!(point.y, measurement.y());
+    /// ```
     pub fn y(&self) -> f64 {
         self.las.y
     }
 
+    /// Returns the z coordinate of this measurement, from the las point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point.clone(), config).unwrap();
+    /// assert_eq!(point.z, measurement.z());
+    /// ```
     pub fn z(&self) -> f64 {
         self.las.z
     }
 
+    /// Returns the time of this measurement, from the las point.
+    ///
+    /// Although not all las points have gps time, we know ours does because we check during measurement creation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Trajectory, Measurement, Config};
+    /// use las::Read;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let point = las::Reader::from_path("data/points.las")
+    ///     .unwrap()
+    ///     .points()
+    ///     .next()
+    ///     .unwrap()
+    ///     .unwrap();
+    /// let measurement = Measurement::new(&trajectory, point.clone(), config).unwrap();
+    /// assert_eq!(point.gps_time.unwrap(), measurement.time());
+    /// ```
     pub fn time(&self) -> f64 {
-        self.sbet.time
+        self.las.gps_time.unwrap()
     }
 
     pub fn body_frame(&self) -> Point {
@@ -88,7 +174,7 @@ mod tests {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let measurement = &measurements[0];
-        assert_eq!(400825.80649573973, measurement.time());
+        assert_eq!(400825.80571932, measurement.time());
         assert_eq!(320000.34, measurement.x());
         assert_eq!(4181319.35, measurement.y());
         assert_eq!(2687.59, measurement.z());
