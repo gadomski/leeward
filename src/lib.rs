@@ -1,9 +1,12 @@
+//! Lidar Equation Engine With Already Racked Derivatives.
+
 mod config;
-mod convert;
+pub mod convert;
 mod measurement;
 mod trajectory;
 
 pub use config::Config;
-pub use convert::{Ellipsoid, GeocentricPoint, GeodeticConverter, GeodeticPoint, WGS_84};
 pub use measurement::Measurement;
 pub use trajectory::Trajectory;
+
+pub type Point = nalgebra::Vector3<f64>;

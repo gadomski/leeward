@@ -32,14 +32,13 @@ fn main() {
     {
         match Measurement::new(&trajectory, point, config) {
             Ok(measurement) => {
-                let las = measurement.las();
                 let body_frame = measurement.body_frame();
                 println!(
                     "{},{},{},{},{},{},{}",
                     measurement.time(),
-                    las.x,
-                    las.y,
-                    las.z,
+                    measurement.x(),
+                    measurement.y(),
+                    measurement.z(),
                     body_frame.x,
                     body_frame.y,
                     body_frame.z

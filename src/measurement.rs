@@ -1,12 +1,33 @@
-use crate::{Config, GeodeticConverter, GeodeticPoint, Trajectory, WGS_84};
+use crate::{Config, Trajectory};
 use anyhow::{anyhow, Error};
 use nalgebra::{Matrix3, Vector3};
+use std::path::Path;
+
+/// Reads in a vector of measurements from files.
+///
+/// # Examples
+///
+/// ```
+/// let measurements = leeward::measurements(
+///     "data/sbet.out",
+///     "data/points.las",
+///     "data/config.toml",
+/// ).unwrap();
+/// ```
+pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
+    sbet: P0,
+    las: P1,
+    config: P2,
+) -> Result<Vec<Measurement>, Error> {
+    unimplemented!()
+}
 
 /// A measurement combines trajectory information with the lidar point.
+#[derive(Debug)]
 pub struct Measurement {
     las: las::Point,
     sbet: sbet::Point,
-    body_frame: Vector3<f64>,
+    config: Config,
 }
 
 impl Measurement {
@@ -25,23 +46,23 @@ impl Measurement {
             "could not find sbet point for gps time: {}",
             gps_time
         ))?;
-        let converter = GeodeticConverter::new(config.utm_zone)?;
-        let geodetic_las = converter.convert(&las)?;
-        let geocentric_las = geodetic_las.to_ecef(WGS_84); // TODO this should be configurable
-        let geodetic_sbet = GeodeticPoint::from(sbet);
-        let geocentric_sbet = geodetic_sbet.to_ecef(WGS_84);
-        let navigation_frame = geodetic_sbet.to_navigation_frame(geocentric_las - geocentric_sbet);
-        let body_frame =
-            rotation_matrix(sbet.roll, sbet.pitch, sbet.yaw).transpose() * navigation_frame;
         Ok(Measurement {
             las,
             sbet: *sbet,
-            body_frame,
+            config,
         })
     }
 
-    pub fn las(&self) -> &las::Point {
-        &self.las
+    pub fn x(&self) -> f64 {
+        self.las.x
+    }
+
+    pub fn y(&self) -> f64 {
+        self.las.y
+    }
+
+    pub fn z(&self) -> f64 {
+        self.las.z
     }
 
     pub fn time(&self) -> f64 {
@@ -49,7 +70,7 @@ impl Measurement {
     }
 
     pub fn body_frame(&self) -> Vector3<f64> {
-        self.body_frame
+        unimplemented!()
     }
 }
 
@@ -85,4 +106,24 @@ fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
         roll.sin(),
         roll.cos(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn body_frame() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let measurement = &measurements[0];
+        assert_eq!(400825.80649573973, measurement.time());
+        assert_eq!(320024.07, measurement.x());
+        assert_eq!(4181361.65, measurement.y());
+        assert_eq!(2680.53, measurement.z());
+        let body_frame = measurement.body_frame();
+        assert_relative_eq!(-396.095, body_frame.x);
+        assert_relative_eq!(1741.869, body_frame.y);
+        assert_relative_eq!(4295.007, body_frame.z);
+    }
 }
