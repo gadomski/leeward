@@ -258,7 +258,11 @@ impl Measurement {
     /// let boresight = measurements[0].boresight();
     /// ```
     pub fn boresight(&self) -> Matrix {
-        unimplemented!()
+        convert::rotation_matrix(
+            self.config.boresight.roll,
+            self.config.boresight.pitch,
+            self.config.boresight.yaw,
+        )
     }
 
     /// Returns this measurement's lever arm.

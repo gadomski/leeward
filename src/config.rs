@@ -6,6 +6,15 @@ use std::{fs::File, io::Read, path::Path};
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct Config {
     pub utm_zone: u8,
+    pub boresight: RollPitchYaw,
+}
+
+/// Roll, pitch, and yaw.
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct RollPitchYaw {
+    pub roll: f64,
+    pub pitch: f64,
+    pub yaw: f64,
 }
 
 impl Config {

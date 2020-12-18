@@ -120,7 +120,7 @@ pub fn ecef_to_navigation(point: Point, plane: Point) -> Point {
 /// let body = convert::navigation_to_body(navigation, 0.0, 0.0, 0.4); // roll, pitch, yaw
 /// ```
 pub fn navigation_to_body(point: Point, roll: f64, pitch: f64, yaw: f64) -> Point {
-    let matrix = body_to_navigation_matrix(roll, pitch, yaw);
+    let matrix = rotation_matrix(roll, pitch, yaw);
     matrix.transpose() * point
 }
 
@@ -158,7 +158,18 @@ fn ecef_to_navigation_matrix(point: Point) -> Matrix {
     )
 }
 
-fn body_to_navigation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix {
+/// Returns a rotation matrix from a roll, pitch, and yaw.
+///
+/// # Examples
+///
+/// ```
+/// use leeward::convert;
+/// let matrix = convert::rotation_matrix(0., 0., 0.);
+/// assert_eq!(matrix[(0, 0)], 1.);
+/// assert_eq!(matrix[(1, 1)], 1.);
+/// assert_eq!(matrix[(2, 2)], 1.);
+/// ```
+pub fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix {
     let cy = yaw.cos();
     let sy = yaw.sin();
     let cp = pitch.cos();

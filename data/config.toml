@@ -1,1 +1,6 @@
 utm_zone = 11
+
+[boresight]
+roll = -1.57
+pitch = 0
+yaw = -1.57
