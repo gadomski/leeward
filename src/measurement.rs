@@ -292,7 +292,150 @@ impl Measurement {
         dimension: Dimension,
         variable: Variable,
     ) -> f64 {
-        unimplemented!()
+        let range = self.range();
+        let scan_angle = self.scan_angle();
+        let sa = scan_angle.sin();
+        let ca = scan_angle.cos();
+        let sr = self.config.boresight.roll.sin();
+        let cr = self.config.boresight.roll.cos();
+        let sp = self.config.boresight.pitch.sin();
+        let cp = self.config.boresight.pitch.cos();
+        let sy = self.config.boresight.yaw.sin();
+        let cy = self.config.boresight.yaw.cos();
+        match variable {
+            Variable::BoresightRoll => match dimension {
+                Dimension::X => range * sa * (cr * sy - cy * sp * sr),
+                Dimension::Y => range * sa * (-cr * cy - sp * sr * sy),
+                Dimension::Z => -cp * range * sa * sr,
+            },
+            Variable::BoresightPitch => match dimension {
+                Dimension::X => -ca * cy * range * sp + cp * cr * cy * range * sa,
+                Dimension::Y => -ca * range * sp * sy + cp * cr * range * sa * sy,
+                Dimension::Z => -ca * cp * range - cr * range * sa * sp,
+            },
+            Variable::BoresightYaw => match dimension {
+                Dimension::X => -ca * cp * range * sy + range * sa * (-cr * sp * sy + cy * sr),
+                Dimension::Y => ca * cp * cy * range + range * sa * (cr * cy * sp + sr * sy),
+                Dimension::Z => 0.,
+            },
+            Variable::LeverArmX => match dimension {
+                Dimension::X => -1.,
+                Dimension::Y => 0.,
+                Dimension::Z => 0.,
+            },
+            Variable::LeverArmY => match dimension {
+                Dimension::X => 0.,
+                Dimension::Y => -1.,
+                Dimension::Z => 0.,
+            },
+            Variable::LeverArmZ => match dimension {
+                Dimension::X => 0.,
+                Dimension::Y => 0.,
+                Dimension::Z => -1.,
+            },
+            Variable::Range => unimplemented!(),
+            Variable::ScanAngle => unimplemented!(),
+            _ => 0.,
+        }
+    }
+
+    /// Returns this measurement's boresight roll.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_roll = measurements[0].boresight_roll();
+    /// ```
+    pub fn boresight_roll(&self) -> f64 {
+        self.config.boresight.roll
+    }
+
+    /// Returns this measurement's boresight pitch.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_pitch = measurements[0].boresight_pitch();
+    /// ```
+    pub fn boresight_pitch(&self) -> f64 {
+        self.config.boresight.pitch
+    }
+
+    /// Returns this measurement's boresight yaw.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_yaw = measurements[0].boresight_yaw();
+    /// ```
+    pub fn boresight_yaw(&self) -> f64 {
+        self.config.boresight.yaw
+    }
+
+    /// Returns this measurement's lever arm x.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_yaw = measurements[0].lever_arm_x();
+    /// ```
+    pub fn lever_arm_x(&self) -> f64 {
+        self.config.lever_arm.x
+    }
+
+    /// Returns this measurement's lever arm y.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_yaw = measurements[0].lever_arm_y();
+    /// ```
+    pub fn lever_arm_y(&self) -> f64 {
+        self.config.lever_arm.y
+    }
+
+    /// Returns this measurement's lever arm z.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight_yaw = measurements[0].lever_arm_z();
+    /// ```
+    pub fn lever_arm_z(&self) -> f64 {
+        self.config.lever_arm.z
+    }
+
+    /// Returns this measurement's config.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let config = measurements[0].config();
+    /// ```
+    pub fn config(&self) -> Config {
+        self.config
+    }
+
+    /// Creates a new measurement with the provided config.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
+    pub fn with_config(&self, config: Config) -> Measurement {
+        Measurement {
+            las: self.las.clone(),
+            sbet: self.sbet,
+            config: config,
+        }
     }
 }
 

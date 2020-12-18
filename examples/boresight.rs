@@ -27,6 +27,6 @@ fn main() {
         .step_by(step)
         .map(|r| Measurement::new(&trajectory, r.unwrap(), config).unwrap())
         .collect();
-    let boresight = Boresight::new(measurements);
+    let boresight = Boresight::new(measurements).unwrap();
     println!("{:?}", boresight.compute());
 }
