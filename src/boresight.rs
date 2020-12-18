@@ -25,7 +25,7 @@ impl Boresight {
     /// ```
     /// # use leeward::Boresight;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let boresight = Boresight::new(&measurements);
+    /// let boresight = Boresight::new(measurements);
     /// ```
     pub fn new(measurements: Vec<Measurement>) -> Boresight {
         Boresight { measurements }
@@ -38,7 +38,7 @@ impl Boresight {
     /// ```
     /// # use leeward::Boresight;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let boresight = Boresight::new(&measurements);
+    /// let boresight = Boresight::new(measurements);
     /// let adjustment = boresight.compute();
     /// ```
     pub fn compute(&self) -> Adjustment {

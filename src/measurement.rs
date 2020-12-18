@@ -1,4 +1,4 @@
-use crate::{convert, Config, Point, Trajectory};
+use crate::{convert, Config, Matrix, Point, Trajectory};
 use anyhow::{anyhow, Error};
 use std::path::Path;
 
@@ -191,6 +191,86 @@ impl Measurement {
             self.sbet.yaw,
             self.config.utm_zone,
         )
+    }
+
+    /// Calculates body frame coordinates using the lidar equation and this measurement's configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let body_frame = measurements[0].body_frame_from_config();
+    /// ```
+    pub fn body_frame_from_config(&self) -> Point {
+        self.boresight() * self.scanner() - self.lever_arm()
+    }
+
+    /// Returns this measurement's point in the scanner reference frame.
+    ///
+    /// This is calculated from the las point's scan angle and the computed range from the scanner origin to the target point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let scanner = measurements[0].scanner();
+    /// ```
+    pub fn scanner(&self) -> Point {
+        let range = self.range();
+        let scan_angle = self.scan_angle();
+        Point::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
+    }
+
+    /// Returns this measurement's scan range.
+    ///
+    /// This is the vector distance from the scanner origin to the measured point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let range = measurements[0].range();
+    /// ```
+    pub fn range(&self) -> f64 {
+        unimplemented!()
+    }
+
+    /// Returns this measurement's scan angle in radians.
+    ///
+    /// This value is taken from the las point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let scan_angle = measurements[0].scan_angle();
+    /// ```
+    pub fn scan_angle(&self) -> f64 {
+        f64::from(self.las.scan_angle).to_radians()
+    }
+
+    /// Returns this measurement's boresight angles as a rotation matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let boresight = measurements[0].boresight();
+    /// ```
+    pub fn boresight(&self) -> Matrix {
+        unimplemented!()
+    }
+
+    /// Returns this measurement's lever arm.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let lever_arm = measurements[0].lever_arm();
+    /// ```
+    pub fn lever_arm(&self) -> Point {
+        unimplemented!()
     }
 }
 
