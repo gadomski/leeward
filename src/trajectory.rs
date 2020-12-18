@@ -44,7 +44,12 @@ impl Trajectory {
     ///
     /// # Examples
     ///
-    /// TODO
+    /// ```
+    /// # use leeward::Trajectory;
+    /// let trajectory = Trajectory::from_path("data/sbet.out").unwrap();
+    /// assert!(trajectory.get(400825.80571932).is_some());
+    /// assert!(trajectory.get(600825.80571932).is_none());
+    /// ```
     pub fn get(&self, time: f64) -> Option<&Point> {
         let index = index(time, self.scale);
         self.points.get(&index)
