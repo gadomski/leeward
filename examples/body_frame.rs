@@ -5,7 +5,7 @@ use las::{Read, Reader};
 use leeward::{Config, Measurement, Trajectory};
 
 fn main() {
-    let matches = App::new("leeward: body frame")
+    let matches = App::new("leeward-body-frame")
         .arg(
             Arg::with_name("trajectory")
                 .takes_value(true)

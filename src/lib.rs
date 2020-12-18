@@ -1,10 +1,12 @@
 //! Lidar Equation Engine With Already Racked Derivatives.
 
+mod boresight;
 mod config;
 pub mod convert;
 mod measurement;
 mod trajectory;
 
+pub use boresight::Boresight;
 pub use config::Config;
 pub use measurement::{measurements, Measurement};
 pub use trajectory::Trajectory;
