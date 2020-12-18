@@ -2,6 +2,6 @@ utm_zone = 11
 lever_arm = [0, 0, 0]
 
 [boresight]
-roll = -1.57
-pitch = 0
-yaw = -1.57
+roll = 0
+pitch = -1.54
+yaw = -1.54

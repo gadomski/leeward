@@ -1,4 +1,4 @@
-use crate::{convert, Config, Matrix, Point, Trajectory};
+use crate::{convert, Config, Dimension, Matrix, Point, Trajectory, Variable};
 use anyhow::{anyhow, Error};
 use std::path::Path;
 
@@ -276,6 +276,23 @@ impl Measurement {
     /// ```
     pub fn lever_arm(&self) -> Point {
         self.config.lever_arm
+    }
+
+    /// Returns the partial derivative in the body frame for the given dimension and variable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crate::{Dimension, Variable};
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll);
+    /// ```
+    pub fn partial_derivative_in_body_frame(
+        &self,
+        dimension: Dimension,
+        variable: Variable,
+    ) -> f64 {
+        unimplemented!()
     }
 }
 
