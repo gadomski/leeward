@@ -2,6 +2,7 @@ use anyhow::Error;
 use serde::Deserialize;
 use std::{fs::File, io::Read, path::Path};
 
+/// Configuration structure.
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct Config {
     pub utm_zone: u8,

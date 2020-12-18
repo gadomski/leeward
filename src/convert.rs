@@ -1,3 +1,5 @@
+//! Utilities for coordinate conversion.
+
 use crate::{Matrix, Point};
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
