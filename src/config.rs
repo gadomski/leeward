@@ -1,3 +1,4 @@
+use crate::Point;
 use anyhow::Error;
 use serde::Deserialize;
 use std::{fs::File, io::Read, path::Path};
@@ -7,6 +8,7 @@ use std::{fs::File, io::Read, path::Path};
 pub struct Config {
     pub utm_zone: u8,
     pub boresight: RollPitchYaw,
+    pub lever_arm: Point,
 }
 
 /// Roll, pitch, and yaw.

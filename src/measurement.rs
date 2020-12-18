@@ -232,7 +232,8 @@ impl Measurement {
     /// let range = measurements[0].range();
     /// ```
     pub fn range(&self) -> f64 {
-        unimplemented!()
+        let body_frame = self.body_frame();
+        (body_frame - (Point::new(0., 0., 0.) - self.lever_arm())).norm()
     }
 
     /// Returns this measurement's scan angle in radians.
@@ -274,7 +275,7 @@ impl Measurement {
     /// let lever_arm = measurements[0].lever_arm();
     /// ```
     pub fn lever_arm(&self) -> Point {
-        unimplemented!()
+        self.config.lever_arm
     }
 }
 
@@ -302,5 +303,13 @@ mod tests {
         assert_relative_eq!(-405.710, body_frame.x, max_relative = 1e-3);
         assert_relative_eq!(1780.085, body_frame.y, max_relative = 1e-3);
         assert_relative_eq!(4287.566, body_frame.z, max_relative = 1e-3);
+    }
+
+    #[test]
+    fn range() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let range = measurements[0].range();
+        assert_relative_eq!(4660.10, range, max_relative = 1e-2);
     }
 }
