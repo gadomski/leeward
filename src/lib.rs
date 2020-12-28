@@ -1,12 +1,24 @@
 //! Lidar Equation Engine With Already Racked Derivatives.
+//!
+//! Here's some fun stuff you can do:
+//!
+//! - Use the trajectory to transform the point cloud into the body frame of the plane:
+//!
+//! ```
+//! use leeward::Point;
+//! let measurements = leeward::measurements(
+//!     "data/sbet.out",
+//!     "data/points.las",
+//!     "data/config.toml",
+//! ).unwrap();
+//! let body_frame_coordinates: Vec<Point> = measurements.iter().map(|m| m.body_frame()).collect();
+//! ```
 
-mod boresight;
 mod config;
 pub mod convert;
 mod measurement;
 mod trajectory;
 
-pub use boresight::Boresight;
 pub use config::{Config, RollPitchYaw};
 pub use measurement::{measurements, Measurement};
 pub use trajectory::Trajectory;
@@ -17,7 +29,7 @@ pub type Point = nalgebra::Vector3<f64>;
 pub type Matrix = nalgebra::Matrix3<f64>;
 
 /// The three dimensions.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Dimension {
     X,
     Y,
@@ -31,7 +43,11 @@ impl Dimension {
     ///
     /// ```
     /// # use leeward::Dimension;
-    /// assert_eq!(vec![Dimension::X, Dimension::Y, Dimension::Z], Dimension::iter().collect());
+    /// let mut iter = Dimension::iter();
+    /// assert_eq!(Dimension::X, iter.next().unwrap());
+    /// assert_eq!(Dimension::Y, iter.next().unwrap());
+    /// assert_eq!(Dimension::Z, iter.next().unwrap());
+    /// assert_eq!(None, iter.next());
     /// ```
     pub fn iter() -> DimensionIter {
         DimensionIter::new()

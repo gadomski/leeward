@@ -283,7 +283,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// # use crate::{Dimension, Variable};
+    /// # use leeward::{Dimension, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll);
     /// ```
