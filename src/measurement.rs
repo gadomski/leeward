@@ -274,7 +274,7 @@ impl Measurement {
 
     /// Returns this measurement's scan angle in radians.
     ///
-    /// This value is taken from the las point.
+    /// This value is taken from the las point in the body frame of the plane (not the scan angle in the las file).
     ///
     /// # Examples
     ///
@@ -283,7 +283,11 @@ impl Measurement {
     /// let scan_angle = measurements[0].scan_angle();
     /// ```
     pub fn scan_angle(&self) -> f64 {
-        f64::from(self.las.scan_angle).to_radians()
+        let body_frame = self.body_frame();
+        body_frame.y.signum()
+            * (body_frame.x.powi(2) + body_frame.y.powi(2))
+                .sqrt()
+                .atan2(body_frame.z)
     }
 
     /// Returns this measurement's boresight angles as a rotation matrix.
