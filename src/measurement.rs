@@ -138,6 +138,42 @@ impl Measurement {
         self.las.z
     }
 
+    /// Returns the roll of this measurement, from the sbet.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let roll = measurements[0].roll();
+    /// ```
+    pub fn roll(&self) -> f64 {
+        self.sbet.roll
+    }
+
+    /// Returns the pitch of this measurement, from the sbet.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let pitch = measurements[0].pitch();
+    /// ```
+    pub fn pitch(&self) -> f64 {
+        self.sbet.pitch
+    }
+
+    /// Returns the yaw of this measurement, from the sbet.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let yaw = measurements[0].yaw();
+    /// ```
+    pub fn yaw(&self) -> f64 {
+        self.sbet.yaw
+    }
+
     /// Returns the time of this measurement, from the las point.
     ///
     /// Although not all las points have gps time, we know ours does because we check during measurement creation.
