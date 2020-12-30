@@ -9,24 +9,22 @@ const BORESIGHT_VARIABLES: [Variable; 3] = [
     Variable::BoresightPitch,
     Variable::BoresightYaw,
 ];
+const LEVER_ARM_VARIABLES: [Variable; 3] = [
+    Variable::LeverArmX,
+    Variable::LeverArmY,
+    Variable::LeverArmZ,
+];
 
 /// Adjustor structure.
 #[derive(Debug)]
 pub struct Adjustor {
-    config: Config,
     measurements: Vec<Measurement>,
     rmse: f64,
     residuals: DVector<f64>,
     tolerance: f64,
     variables: Vec<Variable>,
+    config: Config,
     history: Vec<Record>,
-}
-
-/// Adjustment result.
-#[derive(Debug)]
-pub struct Adjustment {
-    pub config: Config,
-    pub history: Vec<Record>,
 }
 
 /// A record of a single iteration.
@@ -49,6 +47,26 @@ impl Adjustor {
     /// ```
     pub fn new(measurements: Vec<Measurement>) -> Result<Adjustor, Error> {
         Adjustor::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
+    }
+
+    /// Switch this adjustor to adjust the lever arm.
+    ///
+    /// By default, adjusts boresight.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Adjustor;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let mut adjustor = Adjustor::new(measurements).unwrap();
+    /// adjustor.adjust_lever_arm(true);
+    /// ```
+    pub fn adjust_lever_arm(&mut self, adjust_lever_arm: bool) {
+        if adjust_lever_arm {
+            self.variables = LEVER_ARM_VARIABLES.to_vec();
+        } else {
+            self.variables = BORESIGHT_VARIABLES.to_vec();
+        }
     }
 
     fn new_iteration(
@@ -78,14 +96,22 @@ impl Adjustor {
             values: values.iter().map(|&v| v).collect(),
         });
         Ok(Adjustor {
-            config,
             rmse,
             residuals,
             measurements,
             variables,
             tolerance: DEFAULT_TOLERANCE,
             history,
+            config,
         })
+    }
+
+    pub fn rmse(&self) -> f64 {
+        self.rmse
+    }
+
+    pub fn config(&self) -> Config {
+        self.config
     }
 
     /// Adjusts these measurements' configuration to optimally align the points.
@@ -95,23 +121,16 @@ impl Adjustor {
     /// ```
     /// # use leeward::Adjustor;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let mut adjustor = Adjustor::new(measurements).unwrap();
     /// let adjustment = adjustor.adjust().unwrap();
     /// ```
-    pub fn adjust(&self) -> Result<Adjustment, Error> {
+    pub fn adjust(self) -> Result<Adjustor, Error> {
         let next_adjustor = self.next_adjustor()?;
         let delta = self.rmse - next_adjustor.rmse;
         if delta < self.tolerance {
-            Ok(self.adjustment())
+            Ok(self)
         } else {
             next_adjustor.adjust()
-        }
-    }
-
-    fn adjustment(&self) -> Adjustment {
-        Adjustment {
-            config: self.config,
-            history: self.history.clone(),
         }
     }
 
@@ -166,8 +185,7 @@ mod tests {
     fn adjust() {
         let measurements =
             crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let adjustor = Adjustor::new(measurements).unwrap();
-        let adjustment = adjustor.adjust().unwrap();
-        assert!(adjustment.history.last().unwrap().rmse < 14.);
+        let adjustor = Adjustor::new(measurements).unwrap().adjust().unwrap();
+        assert!(adjustor.rmse < 14.);
     }
 }

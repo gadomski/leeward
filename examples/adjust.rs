@@ -29,14 +29,22 @@ fn main() {
         .step_by(step)
         .map(|r| Measurement::new(&trajectory, r.unwrap(), config).unwrap())
         .collect();
-    let adjustor = Adjustor::new(measurements).unwrap();
-    let adjustment = adjustor.adjust().unwrap();
-    for (i, record) in adjustment.history.iter().enumerate() {
-        eprint!("Iter #{}: rmse={}", i, record.rmse);
-        for (variable, value) in record.variables.iter().zip(&record.values) {
-            eprint!(", {:?}={}", variable, value);
+    let mut adjustor = Adjustor::new(measurements).unwrap();
+    let mut last_rmse = adjustor.rmse();
+    let mut adjust_lever_arm = false;
+    for i in 0.. {
+        adjustor.adjust_lever_arm(adjust_lever_arm);
+        adjustor = adjustor.adjust().unwrap();
+        let new_rmse = adjustor.rmse();
+        println!("Iter #{}: rmse={}", i, new_rmse);
+        if last_rmse - new_rmse < 1e-6 {
+            break;
+        } else {
+            last_rmse = new_rmse;
+            adjust_lever_arm = !adjust_lever_arm;
         }
-        eprintln!("");
     }
-    println!("{}", toml::to_string_pretty(&adjustment.config).unwrap());
+    adjustor.adjust_lever_arm(false);
+    adjustor = adjustor.adjust().unwrap();
+    println!("{}", toml::to_string_pretty(&adjustor.config()).unwrap());
 }

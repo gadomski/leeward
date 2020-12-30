@@ -20,7 +20,7 @@ pub mod convert;
 mod measurement;
 mod trajectory;
 
-pub use adjust::{Adjustment, Adjustor};
+pub use adjust::Adjustor;
 pub use config::Config;
 pub use measurement::{measurements, Measurement};
 use serde::{Deserialize, Serialize};
