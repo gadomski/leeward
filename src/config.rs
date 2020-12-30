@@ -1,15 +1,15 @@
 use crate::{Point, RollPitchYaw, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::DVector;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
 /// Configuration structure.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct Config {
     pub utm_zone: u8,
-    pub boresight: RollPitchYaw,
     pub lever_arm: Point,
+    pub boresight: RollPitchYaw,
 }
 
 impl Config {

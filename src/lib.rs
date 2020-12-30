@@ -20,10 +20,10 @@ pub mod convert;
 mod measurement;
 mod trajectory;
 
-pub use adjust::Adjustment;
+pub use adjust::{Adjustment, Adjustor};
 pub use config::Config;
 pub use measurement::{measurements, Measurement};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 pub use trajectory::Trajectory;
 
 /// A nalgebra vector3 for f64s.
@@ -91,7 +91,7 @@ impl Iterator for DimensionIter {
 }
 
 /// The variables in the lidar equation.
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Variable {
     Range,
     ScanAngle,
@@ -110,7 +110,7 @@ pub enum Variable {
 }
 
 /// Roll, pitch, and yaw.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct RollPitchYaw {
     pub roll: f64,
     pub pitch: f64,
