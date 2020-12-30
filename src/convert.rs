@@ -1,6 +1,6 @@
 //! Utilities for coordinate conversion.
 
-use crate::{Matrix, Point};
+use crate::{Matrix, Point, RollPitchYaw};
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
     a: 6378137.,
@@ -17,23 +17,17 @@ pub const WGS_84: Ellipsoid = Ellipsoid {
 /// # Examples
 ///
 /// ```
-/// # use leeward::{convert, Point};
+/// # use leeward::{convert, Point, RollPitchYaw};
 /// let point = Point::new(320000.34, 4181319.35, 2687.59);
 /// let plane = Point::new(-119.0434f64.to_radians(), 37.7614978f64.to_radians(), 2687.59);
-/// let body = convert::projected_to_body(point, plane, 0.0, 0.0, 0.4, 11); // roll, pitch, yaw, utm_zone
+/// let rpy = RollPitchYaw::new(0., 0., 0.4);
+/// let body = convert::projected_to_body(point, plane, rpy, 11);
 /// ```
-pub fn projected_to_body(
-    point: Point,
-    plane: Point,
-    roll: f64,
-    pitch: f64,
-    yaw: f64,
-    utm_zone: u8,
-) -> Point {
+pub fn projected_to_body(point: Point, plane: Point, rpy: RollPitchYaw, utm_zone: u8) -> Point {
     let geodetic = projected_to_geodetic(point, utm_zone);
     let geocentric = geodetic_to_ecef(geodetic);
     let navigation = ecef_to_navigation(geocentric, plane);
-    navigation_to_body(navigation, roll, pitch, yaw)
+    navigation_to_body(navigation, rpy)
 }
 
 /// Converts from projected (UTM) coordinates into geodetic coordinates.
@@ -115,12 +109,12 @@ pub fn ecef_to_navigation(point: Point, plane: Point) -> Point {
 /// # Examples
 ///
 /// ```
-/// use leeward::{convert, Point};
+/// use leeward::{convert, Point, RollPitchYaw};
 /// let navigation = Point::new(-1000., -200., 4000.);
-/// let body = convert::navigation_to_body(navigation, 0.0, 0.0, 0.4); // roll, pitch, yaw
+/// let body = convert::navigation_to_body(navigation, RollPitchYaw::new(0.0, 0.0, 0.4));
 /// ```
-pub fn navigation_to_body(point: Point, roll: f64, pitch: f64, yaw: f64) -> Point {
-    let matrix = rotation_matrix(roll, pitch, yaw);
+pub fn navigation_to_body(point: Point, rpy: RollPitchYaw) -> Point {
+    let matrix = rpy.as_matrix();
     matrix.transpose() * point
 }
 
@@ -155,37 +149,6 @@ fn ecef_to_navigation_matrix(point: Point) -> Matrix {
         -latitude.cos() * longitude.cos(),
         -latitude.cos() * longitude.sin(),
         -latitude.sin(),
-    )
-}
-
-/// Returns a rotation matrix from a roll, pitch, and yaw.
-///
-/// # Examples
-///
-/// ```
-/// use leeward::convert;
-/// let matrix = convert::rotation_matrix(0., 0., 0.);
-/// assert_eq!(matrix[(0, 0)], 1.);
-/// assert_eq!(matrix[(1, 1)], 1.);
-/// assert_eq!(matrix[(2, 2)], 1.);
-/// ```
-pub fn rotation_matrix(roll: f64, pitch: f64, yaw: f64) -> Matrix {
-    let cy = yaw.cos();
-    let sy = yaw.sin();
-    let cp = pitch.cos();
-    let sp = pitch.sin();
-    let cr = roll.cos();
-    let sr = roll.sin();
-    Matrix::new(
-        cy * cp,
-        cy * sp * sr - sy * cr,
-        cy * sp * cr + sy * sr,
-        sy * cp,
-        sy * sp * sr + cy * cr,
-        sy * sp * cr - cy * sr,
-        -sp,
-        cp * sr,
-        cp * cr,
     )
 }
 

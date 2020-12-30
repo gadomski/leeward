@@ -1,4 +1,4 @@
-use crate::{convert, Config, Dimension, Matrix, Point, Trajectory, Variable};
+use crate::{convert, Config, Dimension, Matrix, Point, RollPitchYaw, Trajectory, Variable};
 use anyhow::{anyhow, Error};
 use std::path::Path;
 
@@ -222,9 +222,7 @@ impl Measurement {
         convert::projected_to_body(
             projected,
             plane,
-            self.sbet.roll,
-            self.sbet.pitch,
-            self.sbet.yaw,
+            RollPitchYaw::new(self.sbet.roll, self.sbet.pitch, self.sbet.yaw),
             self.config.utm_zone,
         )
     }
@@ -299,11 +297,12 @@ impl Measurement {
     /// let boresight = measurements[0].boresight();
     /// ```
     pub fn boresight(&self) -> Matrix {
-        convert::rotation_matrix(
+        RollPitchYaw::new(
             self.config.boresight.roll,
             self.config.boresight.pitch,
             self.config.boresight.yaw,
         )
+        .as_matrix()
     }
 
     /// Returns this measurement's lever arm.

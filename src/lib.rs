@@ -19,8 +19,9 @@ pub mod convert;
 mod measurement;
 mod trajectory;
 
-pub use config::{Config, RollPitchYaw};
+pub use config::Config;
 pub use measurement::{measurements, Measurement};
+use serde::Deserialize;
 pub use trajectory::Trajectory;
 
 /// A nalgebra vector3 for f64s.
@@ -104,4 +105,58 @@ pub enum Variable {
     GnssX,
     GnssY,
     GnssZ,
+}
+
+/// Roll, pitch, and yaw.
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct RollPitchYaw {
+    pub roll: f64,
+    pub pitch: f64,
+    pub yaw: f64,
+}
+
+impl RollPitchYaw {
+    /// Creates a new roll, pitch, and yaw.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::RollPitchYaw;
+    /// let rpy = RollPitchYaw::new(0., 0., 0.);
+    /// ```
+    pub fn new(roll: f64, pitch: f64, yaw: f64) -> RollPitchYaw {
+        RollPitchYaw { roll, pitch, yaw }
+    }
+
+    /// Returns a rotation matrix from a roll, pitch, and yaw.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::RollPitchYaw;
+    /// let rpy = RollPitchYaw::new(0., 0., 0.);
+    /// let matrix = rpy.as_matrix();
+    /// assert_eq!(matrix[(0, 0)], 1.);
+    /// assert_eq!(matrix[(1, 1)], 1.);
+    /// assert_eq!(matrix[(2, 2)], 1.);
+    /// ```
+    pub fn as_matrix(&self) -> Matrix {
+        let cy = self.yaw.cos();
+        let sy = self.yaw.sin();
+        let cp = self.pitch.cos();
+        let sp = self.pitch.sin();
+        let cr = self.roll.cos();
+        let sr = self.roll.sin();
+        Matrix::new(
+            cy * cp,
+            cy * sp * sr - sy * cr,
+            cy * sp * cr + sy * sr,
+            sy * cp,
+            sy * sp * sr + cy * cr,
+            sy * sp * cr - cy * sr,
+            -sp,
+            cp * sr,
+            cp * cr,
+        )
+    }
 }
