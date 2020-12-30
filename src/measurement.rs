@@ -476,6 +476,22 @@ impl Measurement {
             config: config,
         }
     }
+
+    /// Returns this measurement's residuals.
+    ///
+    /// Residuals are computed in the body frame of the aircraft, and are the
+    /// difference between the computed body coordinates and the las body
+    /// coordinates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let residuals = measurements[0].residuals();
+    /// ```
+    pub fn residuals(&self) -> Point {
+        self.body_frame_from_config() - self.body_frame()
+    }
 }
 
 #[cfg(test)]
