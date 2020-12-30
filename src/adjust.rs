@@ -9,11 +9,6 @@ const BORESIGHT_VARIABLES: [Variable; 3] = [
     Variable::BoresightPitch,
     Variable::BoresightYaw,
 ];
-const LEVER_ARM_VARIABLES: [Variable; 3] = [
-    Variable::LeverArmX,
-    Variable::LeverArmY,
-    Variable::LeverArmZ,
-];
 
 /// Adjustor structure.
 #[derive(Debug)]
@@ -23,6 +18,7 @@ pub struct Adjustor {
     rmse: f64,
     residuals: DVector<f64>,
     tolerance: f64,
+    variables: Vec<Variable>,
     history: Vec<Record>,
 }
 
@@ -86,6 +82,7 @@ impl Adjustor {
             rmse,
             residuals,
             measurements,
+            variables,
             tolerance: DEFAULT_TOLERANCE,
             history,
         })
@@ -102,7 +99,7 @@ impl Adjustor {
     /// let adjustment = adjustor.adjust().unwrap();
     /// ```
     pub fn adjust(&self) -> Result<Adjustment, Error> {
-        let next_adjustor = self.next_adjustor(false)?;
+        let next_adjustor = self.next_adjustor()?;
         let delta = self.rmse - next_adjustor.rmse;
         if delta < self.tolerance {
             Ok(self.adjustment())
@@ -118,34 +115,31 @@ impl Adjustor {
         }
     }
 
-    fn next_adjustor(&self, lever_arm: bool) -> Result<Adjustor, Error> {
-        let variables = if lever_arm {
-            LEVER_ARM_VARIABLES.to_vec()
-        } else {
-            BORESIGHT_VARIABLES.to_vec()
-        };
-        let mut jacobian = DMatrix::zeros(self.residuals.len(), variables.len());
+    fn next_adjustor(&self) -> Result<Adjustor, Error> {
+        let mut jacobian = DMatrix::zeros(self.residuals.len(), self.variables.len());
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
-                for (k, &variable) in variables.iter().enumerate() {
+                for (k, &variable) in self.variables.iter().enumerate() {
                     jacobian[(i * 3 + j, k)] =
                         measurement.partial_derivative_in_body_frame(dimension, variable);
                 }
             }
         }
-        let values = self.config.values(&variables)?;
+        let values = self.config.values(&self.variables)?;
         let values = (jacobian.transpose() * &jacobian)
             .try_inverse()
             .ok_or(anyhow!("no inverse found"))?
             * jacobian.transpose()
             * (&jacobian * values - &self.residuals);
-        let config = self.config.with_values(&variables, values.as_slice())?;
+        let config = self
+            .config
+            .with_values(&self.variables, values.as_slice())?;
         let measurements = self
             .measurements
             .iter()
             .map(|m| m.with_config(config))
             .collect();
-        Adjustor::new_iteration(measurements, variables, self.history.clone())
+        Adjustor::new_iteration(measurements, self.variables.clone(), self.history.clone())
     }
 }
 
