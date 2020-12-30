@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::{fs::File, io::Read, path::Path};
 
 /// Configuration structure.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
 pub struct Config {
     pub utm_zone: u8,
     pub boresight: RollPitchYaw,

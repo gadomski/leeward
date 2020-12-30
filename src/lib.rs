@@ -14,12 +14,13 @@
 //! let body_frame_coordinates: Vec<Point> = measurements.iter().map(|m| m.body_frame()).collect();
 //! ```
 
-pub mod adjust;
+mod adjust;
 mod config;
 pub mod convert;
 mod measurement;
 mod trajectory;
 
+pub use adjust::Adjustment;
 pub use config::Config;
 pub use measurement::{measurements, Measurement};
 use serde::Deserialize;
@@ -109,7 +110,7 @@ pub enum Variable {
 }
 
 /// Roll, pitch, and yaw.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
 pub struct RollPitchYaw {
     pub roll: f64,
     pub pitch: f64,
