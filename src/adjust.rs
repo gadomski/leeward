@@ -1,9 +1,14 @@
 //! Adjust configuration variables to align computed points with the actual points.
-use crate::{Config, Measurement};
+use crate::{Config, Dimension, Measurement, Variable};
 use anyhow::{anyhow, Error};
-use nalgebra::DVector;
+use nalgebra::{DMatrix, DVector};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
+const DEFAULT_VARIABLES: [Variable; 3] = [
+    Variable::BoresightRoll,
+    Variable::BoresightPitch,
+    Variable::BoresightYaw,
+];
 
 /// Adjustment structure.
 #[derive(Debug)]
@@ -13,6 +18,7 @@ pub struct Adjustment {
     rmse: f64,
     residuals: DVector<f64>,
     tolerance: f64,
+    variables: Vec<Variable>,
 }
 
 impl Adjustment {
@@ -47,6 +53,7 @@ impl Adjustment {
             residuals,
             measurements,
             tolerance: DEFAULT_TOLERANCE,
+            variables: DEFAULT_VARIABLES.to_vec(),
         })
     }
 
@@ -57,20 +64,30 @@ impl Adjustment {
     /// ```
     /// # use leeward::Adjustment;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustment = Adjustment::new(measurements);
-    /// let new_config = adjustment.adjust();
+    /// let adjustment = Adjustment::new(measurements).unwrap();
+    /// let config = adjustment.adjust().unwrap();
     /// ```
-    pub fn adjust(&self) -> Config {
-        let next_adjustment = self.next_adjustment();
+    pub fn adjust(&self) -> Result<Config, Error> {
+        let next_adjustment = self.next_adjustment()?;
         let delta = self.rmse - next_adjustment.rmse;
         if delta > self.tolerance {
-            self.config
+            Ok(self.config)
         } else {
             next_adjustment.adjust()
         }
     }
 
-    fn next_adjustment(&self) -> Adjustment {
+    fn next_adjustment(&self) -> Result<Adjustment, Error> {
+        let mut jacobian = DMatrix::zeros(self.residuals.len(), self.variables.len());
+        for (i, measurement) in self.measurements.iter().enumerate() {
+            for (j, dimension) in Dimension::iter().enumerate() {
+                for (k, &variable) in self.variables.iter().enumerate() {
+                    jacobian[(i * 3 + j, k)] =
+                        measurement.partial_derivative_in_body_frame(dimension, variable);
+                }
+            }
+        }
+        let values = self.config.values(&self.variables)?;
         unimplemented!()
     }
 }
