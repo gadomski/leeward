@@ -19,6 +19,7 @@ pub struct Adjustment {
     residuals: DVector<f64>,
     tolerance: f64,
     variables: Vec<Variable>,
+    iteration: usize,
 }
 
 impl Adjustment {
@@ -32,6 +33,13 @@ impl Adjustment {
     /// let adjustment = Adjustment::new(measurements).unwrap();
     /// ```
     pub fn new(measurements: Vec<Measurement>) -> Result<Adjustment, Error> {
+        Adjustment::new_iteration(measurements, 0)
+    }
+
+    fn new_iteration(
+        measurements: Vec<Measurement>,
+        iteration: usize,
+    ) -> Result<Adjustment, Error> {
         if measurements.is_empty() {
             return Err(anyhow!("cannot create adjustment with no measurements"));
         }
@@ -54,6 +62,7 @@ impl Adjustment {
             measurements,
             tolerance: DEFAULT_TOLERANCE,
             variables: DEFAULT_VARIABLES.to_vec(),
+            iteration,
         })
     }
 
@@ -101,7 +110,7 @@ impl Adjustment {
             .iter()
             .map(|m| m.with_config(config))
             .collect();
-        Adjustment::new(measurements)
+        Adjustment::new_iteration(measurements, self.iteration + 1)
     }
 }
 
