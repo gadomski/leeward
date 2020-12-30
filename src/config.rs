@@ -52,4 +52,34 @@ impl Config {
         }
         Ok(values)
     }
+
+    /// Returns a new configuration with the provided variables set to the provided values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::{Variable, Config};
+    /// let variables = vec![Variable::BoresightRoll, Variable::BoresightPitch];
+    /// let values = vec![0.1, 0.2];
+    /// let config = Config::from_path("data/config.toml").unwrap();
+    /// let config = config.with_values(&variables, &values).unwrap();
+    /// assert_eq!(0.1, config.boresight.roll);
+    /// assert_eq!(0.2, config.boresight.pitch);
+    /// ```
+    pub fn with_values(&self, variables: &[Variable], values: &[f64]) -> Result<Config, Error> {
+        let mut config = self.clone();
+        for (variable, value) in variables.iter().zip(values) {
+            let target = match variable {
+                Variable::BoresightRoll => &mut config.boresight.roll,
+                Variable::BoresightPitch => &mut config.boresight.pitch,
+                Variable::BoresightYaw => &mut config.boresight.yaw,
+                Variable::LeverArmX => &mut config.lever_arm.x,
+                Variable::LeverArmY => &mut config.lever_arm.y,
+                Variable::LeverArmZ => &mut config.lever_arm.z,
+                _ => return Err(anyhow!("cannot set variable: {:?}", variable)),
+            };
+            *target = *value;
+        }
+        Ok(config)
+    }
 }

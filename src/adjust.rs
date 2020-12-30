@@ -88,7 +88,20 @@ impl Adjustment {
             }
         }
         let values = self.config.values(&self.variables)?;
-        unimplemented!()
+        let values = (jacobian.transpose() * &jacobian)
+            .try_inverse()
+            .ok_or(anyhow!("no inverse found"))?
+            * jacobian.transpose()
+            * (&jacobian * values - &self.residuals);
+        let config = self
+            .config
+            .with_values(&self.variables, values.as_slice())?;
+        let measurements = self
+            .measurements
+            .iter()
+            .map(|m| m.with_config(config))
+            .collect();
+        Adjustment::new(measurements)
     }
 }
 
@@ -109,5 +122,13 @@ mod tests {
         new_config.lever_arm.x = new_config.lever_arm.x + 1.;
         measurements[0] = measurements[0].with_config(new_config);
         assert!(Adjustment::new(measurements).is_err());
+    }
+
+    #[test]
+    fn adjust() {
+        let measurements =
+            crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let adjustment = Adjustment::new(measurements).unwrap();
+        let config = adjustment.adjust().unwrap();
     }
 }
