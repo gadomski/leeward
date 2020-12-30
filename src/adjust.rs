@@ -138,6 +138,6 @@ mod tests {
         let measurements =
             crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let adjustment = Adjustment::new(measurements).unwrap();
-        let config = adjustment.adjust().unwrap();
+        let _config = adjustment.adjust().unwrap();
     }
 }
