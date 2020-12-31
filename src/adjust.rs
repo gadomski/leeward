@@ -125,16 +125,16 @@ impl Adjustor {
     /// let adjustment = adjustor.adjust().unwrap();
     /// ```
     pub fn adjust(self) -> Result<Adjustor, Error> {
-        let next_adjustor = self.next_adjustor()?;
-        let delta = self.rmse - next_adjustor.rmse;
+        let next = self.next()?;
+        let delta = self.rmse - next.rmse;
         if delta < self.tolerance {
             Ok(self)
         } else {
-            next_adjustor.adjust()
+            next.adjust()
         }
     }
 
-    fn next_adjustor(&self) -> Result<Adjustor, Error> {
+    fn next(&self) -> Result<Adjustor, Error> {
         let mut jacobian = DMatrix::zeros(self.residuals.len(), self.variables.len());
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
