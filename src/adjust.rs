@@ -106,10 +106,30 @@ impl Adjustor {
         })
     }
 
+    /// Returns the root mean squared error for all the variables.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Adjustor;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let rmse = adjustor.rmse();
+    /// ```
     pub fn rmse(&self) -> f64 {
         self.rmse
     }
 
+    /// Returns the configuration structure for this adjustor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Adjustor;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let config = adjustor.config();
+    /// ```
     pub fn config(&self) -> Config {
         self.config
     }
