@@ -23,7 +23,7 @@ fn main() {
     let trajectory = Trajectory::from_path(matches.value_of("trajectory").unwrap()).unwrap();
     let config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
     let step = matches.value_of("decimate").unwrap_or("1").parse().unwrap();
-    println!("Time,X,Y,Z,BodyFrameX,BodyFrameY,BodyFrameZ,ScanAngle,Roll,Pitch,Yaw");
+    println!("Time,X,Y,Z,Roll,Pitch,Yaw,BodyFrameX,BodyFrameY,BodyFrameZ,BodyFrameConfigX,BodyFrameConfigY,BodyFrameConfigZ");
     for point in Reader::from_path(matches.value_of("points").unwrap())
         .unwrap()
         .points()
@@ -33,19 +33,22 @@ fn main() {
         match Measurement::new(&trajectory, point, config) {
             Ok(measurement) => {
                 let body_frame = measurement.body_frame();
+                let body_frame_config = measurement.body_frame_from_config();
                 println!(
-                    "{},{},{},{},{},{},{},{},{},{},{}",
+                    "{},{},{},{},{},{},{},{},{},{},{},{},{}",
                     measurement.time(),
                     measurement.x(),
                     measurement.y(),
                     measurement.z(),
-                    body_frame.x,
-                    body_frame.y,
-                    body_frame.z,
-                    measurement.scan_angle(),
                     measurement.roll(),
                     measurement.pitch(),
                     measurement.yaw(),
+                    body_frame.x,
+                    body_frame.y,
+                    body_frame.z,
+                    body_frame_config.x,
+                    body_frame_config.y,
+                    body_frame_config.z,
                 );
             }
             Err(err) => eprintln!("{}", err),
