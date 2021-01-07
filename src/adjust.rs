@@ -1,4 +1,40 @@
 //! Adjust configuration variables to align computed points with the actual points.
+//!
+//! # Examples
+//!
+//! The `adjust` method runs the adjustment. It returns an adjustment structure,
+//! in case you want to modify something and continue adjusting:
+//!
+//! ```
+//! # use leeward::Adjust;
+//! let measurements = leeward::measurements(
+//!     "data/sbet.out",
+//!     "data/points.las",
+//!     "data/config.toml"
+//! ).unwrap();
+//! let adjust = Adjust::new(measurements).unwrap();
+//! let adjust = adjust.adjust().unwrap();
+//! ```
+//!
+//! The adjust structure includes its final configuration, and also has a history
+//! of all iterations:
+//!
+//! ```
+//! # use leeward::Adjust;
+//! # let measurements = leeward::measurements(
+//! #     "data/sbet.out",
+//! #     "data/points.las",
+//! #     "data/config.toml"
+//! # ).unwrap();
+//! # let adjust = Adjust::new(measurements).unwrap();
+//! # let adjust = adjust.adjust().unwrap();
+//! let config = adjust.config();
+//! let history = adjust.history();
+//! let last_iteration = history.last().unwrap();
+//! let final_rmse = last_iteration.rmse;
+//! let final_config = last_iteration.config;
+//! assert_eq!(final_config, config);
+//! ```
 use crate::{Config, Dimension, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
@@ -33,23 +69,24 @@ pub struct Record {
     pub rmse: f64,
     pub variables: Vec<Variable>,
     pub values: Vec<f64>,
+    pub config: Config,
 }
 
 impl Adjust {
-    /// Creates a new adjustor for the provided measurements.
+    /// Creates a new adjust for the provided measurements.
     ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjust::new(measurements).unwrap();
+    /// let adjust = Adjust::new(measurements).unwrap();
     /// ```
     pub fn new(measurements: Vec<Measurement>) -> Result<Adjust, Error> {
         Adjust::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
     }
 
-    /// Switch this adjustor to adjust the lever arm.
+    /// Switch this adjust to adjust the lever arm.
     ///
     /// By default, adjusts boresight.
     ///
@@ -58,8 +95,8 @@ impl Adjust {
     /// ```
     /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let mut adjustor = Adjust::new(measurements).unwrap();
-    /// adjustor.adjust_lever_arm(true);
+    /// let mut adjust = Adjust::new(measurements).unwrap();
+    /// adjust.adjust_lever_arm(true);
     /// ```
     pub fn adjust_lever_arm(&mut self, adjust_lever_arm: bool) {
         if adjust_lever_arm {
@@ -75,7 +112,7 @@ impl Adjust {
         mut history: Vec<Record>,
     ) -> Result<Adjust, Error> {
         if measurements.is_empty() {
-            return Err(anyhow!("cannot create adjustor with no measurements"));
+            return Err(anyhow!("cannot create adjust with no measurements"));
         }
         let config = measurements[0].config();
         let mut residuals = DVector::zeros(measurements.len() * 3);
@@ -94,6 +131,7 @@ impl Adjust {
             rmse,
             variables: variables.clone(),
             values: values.iter().map(|&v| v).collect(),
+            config,
         });
         Ok(Adjust {
             rmse,
@@ -113,22 +151,22 @@ impl Adjust {
     /// ```
     /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjust::new(measurements).unwrap();
-    /// let rmse = adjustor.rmse();
+    /// let adjust = Adjust::new(measurements).unwrap();
+    /// let rmse = adjust.rmse();
     /// ```
     pub fn rmse(&self) -> f64 {
         self.rmse
     }
 
-    /// Returns the configuration structure for this adjustor.
+    /// Returns the configuration structure for this adjust.
     ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjust::new(measurements).unwrap();
-    /// let config = adjustor.config();
+    /// let adjust = Adjust::new(measurements).unwrap();
+    /// let config = adjust.config();
     /// ```
     pub fn config(&self) -> Config {
         self.config
@@ -141,8 +179,8 @@ impl Adjust {
     /// ```
     /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let mut adjustor = Adjust::new(measurements).unwrap();
-    /// let adjustment = adjustor.adjust().unwrap();
+    /// let adjust = Adjust::new(measurements).unwrap();
+    /// let adjust = adjust.adjust().unwrap();
     /// ```
     pub fn adjust(self) -> Result<Adjust, Error> {
         let next = self.next()?;
@@ -152,6 +190,22 @@ impl Adjust {
         } else {
             next.adjust()
         }
+    }
+
+    /// Returns this adjustment's history.
+    ///
+    /// Starts with one entry, the initial setup.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use leeward::Adjust;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let adjust = Adjust::new(measurements).unwrap();
+    /// assert_eq!(1, adjust.history().len());
+    /// ```
+    pub fn history(&self) -> &Vec<Record> {
+        &self.history
     }
 
     fn next(&self) -> Result<Adjust, Error> {
@@ -205,7 +259,7 @@ mod tests {
     fn adjust() {
         let measurements =
             crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let adjustor = Adjust::new(measurements).unwrap().adjust().unwrap();
-        assert!(adjustor.rmse < 14.);
+        let adjust = Adjust::new(measurements).unwrap().adjust().unwrap();
+        assert!(adjust.rmse < 14.);
     }
 }
