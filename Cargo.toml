@@ -12,6 +12,8 @@ crate-type = ["lib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
+clap = { version = "2.33", features = ["yaml"] }
+csv = "1.1"
 las = "0.7"
 libc = "0.2"
 nalgebra = { version = "0.24", features = ["serde-serialize"] }
@@ -21,8 +23,6 @@ toml = "0.5"
 
 [dev-dependencies]
 approx = "0.4"
-clap = "2.33"
-csv = "1.1"
 
 [build-dependencies]
-cbindgen = "0.15"
+cbindgen = "0.16"

@@ -22,7 +22,7 @@ mod trajectory;
 
 pub use adjust::Adjustor;
 pub use config::Config;
-pub use measurement::{measurements, Measurement};
+pub use measurement::{measurements, measurements_with_decimation, Measurement};
 use serde::{Deserialize, Serialize};
 pub use trajectory::Trajectory;
 

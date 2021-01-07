@@ -18,11 +18,35 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     las: P1,
     config: P2,
 ) -> Result<Vec<Measurement>, Error> {
+    measurements_with_decimation(sbet, las, config, 1)
+}
+
+/// Reads in a vector of measurements from files with the provided decimation.
+///
+/// # Examples
+///
+/// ```
+/// let measurements = leeward::measurements_with_decimation(
+///     "data/sbet.out",
+///     "data/points.las",
+///     "data/config.toml",
+///     100
+/// ).unwrap();
+/// ```
+pub fn measurements_with_decimation<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
+    sbet: P0,
+    las: P1,
+    config: P2,
+    decimation: usize,
+) -> Result<Vec<Measurement>, Error> {
     use las::Read;
+    if decimation == 0 {
+        return Err(anyhow!("cannot decimate by zero"));
+    }
     let trajectory = Trajectory::from_path(sbet)?;
     let config = Config::from_path(config)?;
     let mut measurements = Vec::new();
-    for result in las::Reader::from_path(las)?.points() {
+    for result in las::Reader::from_path(las)?.points().step_by(decimation) {
         let point = result?;
         measurements.push(Measurement::new(&trajectory, point, config)?);
     }
