@@ -60,11 +60,10 @@ fn main() {
     let mut adjustor = Adjustor::new(measurements).unwrap();
     let mut last_rmse = adjustor.rmse();
     let mut adjust_lever_arm = false;
-    for i in 0.. {
+    loop {
         adjustor.adjust_lever_arm(adjust_lever_arm);
         adjustor = adjustor.adjust().unwrap();
         let new_rmse = adjustor.rmse();
-        println!("Iter #{}: rmse={}", i, new_rmse);
         if boresight_only {
             break;
         } else if last_rmse - new_rmse < 1e-6 {
