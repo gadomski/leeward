@@ -1,7 +1,7 @@
 use anyhow::Error;
 use clap::{load_yaml, App, AppSettings};
 use csv::Writer;
-use leeward::Measurement;
+use leeward::{Adjust, Config, Measurement};
 use serde::Serialize;
 use std::{
     fs::File,
@@ -24,7 +24,20 @@ fn main() -> Result<(), Error> {
             .unwrap_or(1),
     )?;
     if let Some(_matches) = matches.subcommand_matches("adjust") {
-        unimplemented!()
+        let adjust = Adjust::new(measurements)?.adjust()?;
+        let mut write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
+            Box::new(File::create(outfile)?)
+        } else {
+            Box::new(io::stdout())
+        };
+        writeln!(write, "{}", toml::to_string_pretty(&adjust.config())?)?;
+
+        if let Some(history) = matches.value_of("history") {
+            let mut writer = File::create(history).map(|f| Writer::from_writer(f))?;
+            for (iteration, record) in adjust.history().iter().enumerate() {
+                writer.serialize(Record::new(iteration, record))?;
+            }
+        }
     } else if let Some(_matches) = matches.subcommand_matches("body_frame") {
         let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
             Box::new(File::create(outfile)?)
@@ -57,6 +70,13 @@ struct BodyFrame {
     body_frame_config_z: f64,
 }
 
+#[derive(Debug, Serialize)]
+struct Record {
+    iteration: usize,
+    rmse: f64,
+    config: Config,
+}
+
 impl BodyFrame {
     fn new(measurement: &Measurement) -> Result<BodyFrame, Error> {
         let body_frame = measurement.body_frame();
@@ -76,5 +96,15 @@ impl BodyFrame {
             body_frame_config_y: body_frame_config.y,
             body_frame_config_z: body_frame_config.z,
         })
+    }
+}
+
+impl Record {
+    fn new(iteration: usize, record: &leeward::adjust::Record) -> Record {
+        Record {
+            iteration,
+            rmse: record.rmse,
+            config: record.config,
+        }
     }
 }

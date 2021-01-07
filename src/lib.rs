@@ -14,7 +14,7 @@
 //! let body_frame_coordinates: Vec<Point> = measurements.iter().map(|m| m.body_frame()).collect();
 //! ```
 
-mod adjust;
+pub mod adjust;
 mod config;
 pub mod convert;
 mod measurement;
