@@ -19,11 +19,22 @@ fn main() {
                 .short("d")
                 .long("decimate"),
         )
+        .arg(
+            Arg::with_name("outfile")
+                .takes_value(true)
+                .short("o")
+                .long("outfile"),
+        )
         .get_matches();
     let trajectory = Trajectory::from_path(matches.value_of("trajectory").unwrap()).unwrap();
     let config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
     let step = matches.value_of("decimate").unwrap_or("1").parse().unwrap();
-    println!("Time,X,Y,Z,Roll,Pitch,Yaw,BodyFrameX,BodyFrameY,BodyFrameZ,BodyFrameConfigX,BodyFrameConfigY,BodyFrameConfigZ");
+    let mut outfile: Box<dyn std::io::Write> = if let Some(outfile) = matches.value_of("outfile") {
+        Box::new(std::fs::File::create(outfile).unwrap())
+    } else {
+        Box::new(std::io::stdout())
+    };
+    writeln!(outfile, "Time,X,Y,Z,Roll,Pitch,Yaw,BodyFrameX,BodyFrameY,BodyFrameZ,BodyFrameConfigX,BodyFrameConfigY,BodyFrameConfigZ").unwrap();
     for point in Reader::from_path(matches.value_of("points").unwrap())
         .unwrap()
         .points()
@@ -34,7 +45,8 @@ fn main() {
             Ok(measurement) => {
                 let body_frame = measurement.body_frame();
                 let body_frame_config = measurement.body_frame_from_config();
-                println!(
+                writeln!(
+                    outfile,
                     "{},{},{},{},{},{},{},{},{},{},{},{},{}",
                     measurement.time(),
                     measurement.x(),
@@ -49,7 +61,8 @@ fn main() {
                     body_frame_config.x,
                     body_frame_config.y,
                     body_frame_config.z,
-                );
+                )
+                .unwrap();
             }
             Err(err) => eprintln!("{}", err),
         }
