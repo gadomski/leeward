@@ -36,7 +36,6 @@ fn main() -> Result<(), Error> {
             let body_frame = result?;
             writer.serialize(body_frame)?;
         }
-        unimplemented!()
     }
     Ok(())
 }

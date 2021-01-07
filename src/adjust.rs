@@ -15,9 +15,9 @@ const LEVER_ARM_VARIABLES: [Variable; 3] = [
     Variable::LeverArmZ,
 ];
 
-/// Adjustor structure.
+/// Adjust structure.
 #[derive(Debug)]
-pub struct Adjustor {
+pub struct Adjust {
     measurements: Vec<Measurement>,
     rmse: f64,
     residuals: DVector<f64>,
@@ -35,18 +35,18 @@ pub struct Record {
     pub values: Vec<f64>,
 }
 
-impl Adjustor {
+impl Adjust {
     /// Creates a new adjustor for the provided measurements.
     ///
     /// # Examples
     ///
     /// ```
-    /// # use leeward::Adjustor;
+    /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let adjustor = Adjust::new(measurements).unwrap();
     /// ```
-    pub fn new(measurements: Vec<Measurement>) -> Result<Adjustor, Error> {
-        Adjustor::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
+    pub fn new(measurements: Vec<Measurement>) -> Result<Adjust, Error> {
+        Adjust::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
     }
 
     /// Switch this adjustor to adjust the lever arm.
@@ -56,9 +56,9 @@ impl Adjustor {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::Adjustor;
+    /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let mut adjustor = Adjustor::new(measurements).unwrap();
+    /// let mut adjustor = Adjust::new(measurements).unwrap();
     /// adjustor.adjust_lever_arm(true);
     /// ```
     pub fn adjust_lever_arm(&mut self, adjust_lever_arm: bool) {
@@ -73,7 +73,7 @@ impl Adjustor {
         measurements: Vec<Measurement>,
         variables: Vec<Variable>,
         mut history: Vec<Record>,
-    ) -> Result<Adjustor, Error> {
+    ) -> Result<Adjust, Error> {
         if measurements.is_empty() {
             return Err(anyhow!("cannot create adjustor with no measurements"));
         }
@@ -95,7 +95,7 @@ impl Adjustor {
             variables: variables.clone(),
             values: values.iter().map(|&v| v).collect(),
         });
-        Ok(Adjustor {
+        Ok(Adjust {
             rmse,
             residuals,
             measurements,
@@ -111,9 +111,9 @@ impl Adjustor {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::Adjustor;
+    /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let adjustor = Adjust::new(measurements).unwrap();
     /// let rmse = adjustor.rmse();
     /// ```
     pub fn rmse(&self) -> f64 {
@@ -125,9 +125,9 @@ impl Adjustor {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::Adjustor;
+    /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let adjustor = Adjustor::new(measurements).unwrap();
+    /// let adjustor = Adjust::new(measurements).unwrap();
     /// let config = adjustor.config();
     /// ```
     pub fn config(&self) -> Config {
@@ -139,12 +139,12 @@ impl Adjustor {
     /// # Examples
     ///
     /// ```
-    /// # use leeward::Adjustor;
+    /// # use leeward::Adjust;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let mut adjustor = Adjustor::new(measurements).unwrap();
+    /// let mut adjustor = Adjust::new(measurements).unwrap();
     /// let adjustment = adjustor.adjust().unwrap();
     /// ```
-    pub fn adjust(self) -> Result<Adjustor, Error> {
+    pub fn adjust(self) -> Result<Adjust, Error> {
         let next = self.next()?;
         let delta = self.rmse - next.rmse;
         if delta < self.tolerance {
@@ -154,7 +154,7 @@ impl Adjustor {
         }
     }
 
-    fn next(&self) -> Result<Adjustor, Error> {
+    fn next(&self) -> Result<Adjust, Error> {
         let mut jacobian = DMatrix::zeros(self.residuals.len(), self.variables.len());
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
@@ -178,7 +178,7 @@ impl Adjustor {
             .iter()
             .map(|m| m.with_config(config))
             .collect();
-        Adjustor::new_iteration(measurements, self.variables.clone(), self.history.clone())
+        Adjust::new_iteration(measurements, self.variables.clone(), self.history.clone())
     }
 }
 
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn no_measurements() {
-        assert!(Adjustor::new(vec![]).is_err());
+        assert!(Adjust::new(vec![]).is_err());
     }
 
     #[test]
@@ -198,14 +198,14 @@ mod tests {
         let mut new_config = measurements[0].config();
         new_config.lever_arm.x = new_config.lever_arm.x + 1.;
         measurements[0] = measurements[0].with_config(new_config);
-        assert!(Adjustor::new(measurements).is_err());
+        assert!(Adjust::new(measurements).is_err());
     }
 
     #[test]
     fn adjust() {
         let measurements =
             crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let adjustor = Adjustor::new(measurements).unwrap().adjust().unwrap();
+        let adjustor = Adjust::new(measurements).unwrap().adjust().unwrap();
         assert!(adjustor.rmse < 14.);
     }
 }
