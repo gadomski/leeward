@@ -47,11 +47,6 @@ fn main() {
                 .help("The output config file, prints to stdout if not provided"),
         )
         .get_matches();
-    let mut output: Box<dyn std::io::Write> = if let Some(outfile) = matches.value_of("outfile") {
-        Box::new(std::fs::File::create(outfile).unwrap())
-    } else {
-        Box::new(std::io::stdout())
-    };
     let trajectory = Trajectory::from_path(matches.value_of("trajectory").unwrap()).unwrap();
     let config = Config::from_path(matches.value_of("config").unwrap()).unwrap();
     let step = matches.value_of("decimate").unwrap_or("1").parse().unwrap();
@@ -82,6 +77,11 @@ fn main() {
     adjustor.adjust_lever_arm(false);
     adjustor = adjustor.adjust().unwrap();
 
+    let mut output: Box<dyn std::io::Write> = if let Some(outfile) = matches.value_of("outfile") {
+        Box::new(std::fs::File::create(outfile).unwrap())
+    } else {
+        Box::new(std::io::stdout())
+    };
     writeln!(
         *output,
         "{}",
