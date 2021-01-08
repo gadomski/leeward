@@ -38,7 +38,7 @@ fn main() -> Result<(), Error> {
                 writer.serialize(Record::new(iteration, record))?;
             }
         }
-    } else if let Some(_matches) = matches.subcommand_matches("body_frame") {
+    } else if let Some(matches) = matches.subcommand_matches("body_frame") {
         let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
             Box::new(File::create(outfile)?)
         } else {
@@ -84,8 +84,8 @@ impl BodyFrame {
         Ok(BodyFrame {
             time: measurement.time(),
             x: measurement.x(),
-            y: measurement.x(),
-            z: measurement.y(),
+            y: measurement.y(),
+            z: measurement.z(),
             roll: measurement.roll(),
             pitch: measurement.pitch(),
             yaw: measurement.yaw(),

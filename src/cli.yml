@@ -3,22 +3,28 @@ version: "0.1"
 author: Pete Gadomski <pete@gadom.ski>
 about: Computes adjustments and total propagated uncertainty for lidar data.
 args:
-  - SBET:
-      help: The Smoothed Best Estimate of Trajectory (.out) file
-      required: true
-  - LAS:
-      help: The point (.las) file
-      required: true
-  - CONFIG:
-      help: The config (.toml) file
-      required: true
-  - decimation:
-      help: The amount by which to decimate the points
-      takes_value: true
-      short: d
-      long: decimatation
+    - SBET:
+        help: The Smoothed Best Estimate of Trajectory (.out) file
+        required: true
+    - LAS:
+        help: The point (.las) file
+        required: true
+    - CONFIG:
+        help: The config (.toml) file
+        required: true
+    - decimation:
+        help: The amount by which to decimate the points
+        takes_value: true
+        short: d
+        long: decimation
 subcommands:
-  - adjust:
-      about: Computes the boresight adjustment
-  - body_frame:
-      about: Computes the points in the body frame of the aircraft
+    - adjust:
+        about: Computes the boresight adjustment
+    - body_frame:
+        about: Computes the points in the body frame of the aircraft
+        args:
+            - outfile:
+                help: The output file, if not provided print to stdout
+                takes_value: true
+                short: o
+                long: outfile
