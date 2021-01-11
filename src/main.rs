@@ -68,6 +68,8 @@ struct BodyFrame {
     body_frame_config_x: f64,
     body_frame_config_y: f64,
     body_frame_config_z: f64,
+    range: f64,
+    scan_angle: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -95,6 +97,8 @@ impl BodyFrame {
             body_frame_config_x: body_frame_config.x,
             body_frame_config_y: body_frame_config.y,
             body_frame_config_z: body_frame_config.z,
+            range: measurement.range(),
+            scan_angle: measurement.scan_angle(),
         })
     }
 }
