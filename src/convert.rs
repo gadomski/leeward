@@ -188,4 +188,23 @@ mod tests {
         assert_relative_eq!(geocentric.y, -4415.678e3, max_relative = 1.0);
         assert_relative_eq!(geocentric.z, 3886.195e3, max_relative = 1.0);
     }
+
+    #[test]
+    fn compare_to_pdal() {
+        let mut original = Reader::from_path("data/points.las").unwrap();
+        let mut ecef_pdal = Reader::from_path("data/points_ecef.las").unwrap();
+        let to_point = |r: Result<las::Point, las::Error>| -> Point {
+            let p = r.unwrap();
+            Point::new(p.x, p.y, p.z)
+        };
+        for (original, ecef_pdal) in original
+            .points()
+            .map(to_point)
+            .zip(ecef_pdal.points().map(to_point))
+        {
+            let geodetic = super::projected_to_geodetic(original, 11);
+            let ecef = super::geodetic_to_ecef(geodetic);
+            assert_relative_eq!(ecef_pdal, ecef, max_relative = 0.01);
+        }
+    }
 }
