@@ -65,11 +65,15 @@ struct BodyFrame {
     body_frame_x: f64,
     body_frame_y: f64,
     body_frame_z: f64,
-    body_frame_config_x: f64,
-    body_frame_config_y: f64,
-    body_frame_config_z: f64,
+    body_frame_config_computed_x: f64,
+    body_frame_config_computed_y: f64,
+    body_frame_config_computed_z: f64,
+    body_frame_config_las_x: f64,
+    body_frame_config_las_y: f64,
+    body_frame_config_las_z: f64,
     range: f64,
-    scan_angle: f64,
+    scan_angle_computed: f64,
+    scan_angle_las: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,7 +86,8 @@ struct Record {
 impl BodyFrame {
     fn new(measurement: &Measurement) -> Result<BodyFrame, Error> {
         let body_frame = measurement.body_frame();
-        let body_frame_config = measurement.body_frame_from_config();
+        let body_frame_config_computed = measurement.body_frame_from_config(false);
+        let body_frame_config_las = measurement.body_frame_from_config(true);
         Ok(BodyFrame {
             time: measurement.time(),
             x: measurement.x(),
@@ -94,11 +99,15 @@ impl BodyFrame {
             body_frame_x: body_frame.x,
             body_frame_y: body_frame.y,
             body_frame_z: body_frame.z,
-            body_frame_config_x: body_frame_config.x,
-            body_frame_config_y: body_frame_config.y,
-            body_frame_config_z: body_frame_config.z,
+            body_frame_config_computed_x: body_frame_config_computed.x,
+            body_frame_config_computed_y: body_frame_config_computed.y,
+            body_frame_config_computed_z: body_frame_config_computed.z,
+            body_frame_config_las_x: body_frame_config_las.x,
+            body_frame_config_las_y: body_frame_config_las.y,
+            body_frame_config_las_z: body_frame_config_las.z,
             range: measurement.range(),
-            scan_angle: measurement.scan_angle(),
+            scan_angle_computed: measurement.scan_angle(false),
+            scan_angle_las: measurement.scan_angle(true),
         })
     }
 }

@@ -253,14 +253,16 @@ impl Measurement {
 
     /// Calculates body frame coordinates using the lidar equation and this measurement's configuration.
     ///
+    /// The argument specifies whether to use the las scan angle (true) or the computed one (false).
+    ///
     /// # Examples
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let body_frame = measurements[0].body_frame_from_config();
+    /// let body_frame = measurements[0].body_frame_from_config(false);
     /// ```
-    pub fn body_frame_from_config(&self) -> Point {
-        self.boresight() * self.scanner() - self.lever_arm()
+    pub fn body_frame_from_config(&self, las_scan_angle: bool) -> Point {
+        self.boresight() * self.scanner(las_scan_angle) - self.lever_arm()
     }
 
     /// Returns this measurement's point in the scanner reference frame.
@@ -271,11 +273,11 @@ impl Measurement {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scanner = measurements[0].scanner();
+    /// let scanner = measurements[0].scanner(false);
     /// ```
-    pub fn scanner(&self) -> Point {
+    pub fn scanner(&self, las_scan_angle: bool) -> Point {
         let range = self.range();
-        let scan_angle = self.scan_angle();
+        let scan_angle = self.scan_angle(las_scan_angle);
         Point::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
     }
 
@@ -296,20 +298,25 @@ impl Measurement {
 
     /// Returns this measurement's scan angle in radians.
     ///
-    /// This value is taken from the las point in the body frame of the plane (not the scan angle in the las file).
+    /// If the argument is false, this value is taken from the las point in the body frame of the plane.
+    /// If true, the scan angle is from the las file (converted to radians).
     ///
     /// # Examples
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scan_angle = measurements[0].scan_angle();
+    /// let scan_angle = measurements[0].scan_angle(false);
     /// ```
-    pub fn scan_angle(&self) -> f64 {
-        let body_frame = self.body_frame();
-        body_frame.y.signum()
-            * (body_frame.x.powi(2) + body_frame.y.powi(2))
-                .sqrt()
-                .atan2(body_frame.z)
+    pub fn scan_angle(&self, las: bool) -> f64 {
+        if las {
+            f64::from(self.las.scan_angle).to_radians()
+        } else {
+            let body_frame = self.body_frame();
+            body_frame.y.signum()
+                * (body_frame.x.powi(2) + body_frame.y.powi(2))
+                    .sqrt()
+                    .atan2(body_frame.z)
+        }
     }
 
     /// Returns this measurement's boresight angles as a rotation matrix.
@@ -343,20 +350,23 @@ impl Measurement {
 
     /// Returns the partial derivative in the body frame for the given dimension and variable.
     ///
+    /// The last argument specifies whether to use the computed scan angle (false) or the las scan angle (true).
+    ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::{Dimension, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll);
+    /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll, false);
     /// ```
     pub fn partial_derivative_in_body_frame(
         &self,
         dimension: Dimension,
         variable: Variable,
+        las_scan_angle: bool,
     ) -> f64 {
         let range = self.range();
-        let scan_angle = self.scan_angle();
+        let scan_angle = self.scan_angle(las_scan_angle);
         let sa = scan_angle.sin();
         let ca = scan_angle.cos();
         let sr = self.config.boresight.roll.sin();
@@ -511,10 +521,10 @@ impl Measurement {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let residuals = measurements[0].residuals();
+    /// let residuals = measurements[0].residuals(false);
     /// ```
-    pub fn residuals(&self) -> Point {
-        self.body_frame_from_config() - self.body_frame()
+    pub fn residuals(&self, las_scan_angle: bool) -> Point {
+        self.body_frame_from_config(las_scan_angle) - self.body_frame()
     }
 }
 

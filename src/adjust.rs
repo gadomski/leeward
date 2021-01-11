@@ -40,6 +40,7 @@ use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
+const DEFAULT_LAS_SCAN_ANGLE: bool = false;
 const BORESIGHT_VARIABLES: [Variable; 3] = [
     Variable::BoresightRoll,
     Variable::BoresightPitch,
@@ -61,6 +62,7 @@ pub struct Adjust {
     variables: Vec<Variable>,
     config: Config,
     history: Vec<Record>,
+    las_scan_angle: bool,
 }
 
 /// A record of a single iteration.
@@ -70,6 +72,7 @@ pub struct Record {
     pub variables: Vec<Variable>,
     pub values: Vec<f64>,
     pub config: Config,
+    pub las_scan_angle: bool,
 }
 
 impl Adjust {
@@ -83,7 +86,12 @@ impl Adjust {
     /// let adjust = Adjust::new(measurements).unwrap();
     /// ```
     pub fn new(measurements: Vec<Measurement>) -> Result<Adjust, Error> {
-        Adjust::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
+        Adjust::new_iteration(
+            measurements,
+            BORESIGHT_VARIABLES.to_vec(),
+            vec![],
+            DEFAULT_LAS_SCAN_ANGLE,
+        )
     }
 
     /// Switch this adjust to adjust the lever arm.
@@ -110,6 +118,7 @@ impl Adjust {
         measurements: Vec<Measurement>,
         variables: Vec<Variable>,
         mut history: Vec<Record>,
+        las_scan_angle: bool,
     ) -> Result<Adjust, Error> {
         if measurements.is_empty() {
             return Err(anyhow!("cannot create adjust with no measurements"));
@@ -120,7 +129,7 @@ impl Adjust {
             if measurement.config() != config {
                 return Err(anyhow!("not all measurements have the same config"));
             }
-            let rs = measurement.residuals();
+            let rs = measurement.residuals(las_scan_angle);
             for (j, &residual) in rs.iter().enumerate() {
                 residuals[i * 3 + j] = residual;
             }
@@ -132,6 +141,7 @@ impl Adjust {
             variables: variables.clone(),
             values: values.iter().map(|&v| v).collect(),
             config,
+            las_scan_angle,
         });
         Ok(Adjust {
             rmse,
@@ -141,6 +151,7 @@ impl Adjust {
             tolerance: DEFAULT_TOLERANCE,
             history,
             config,
+            las_scan_angle,
         })
     }
 
@@ -213,8 +224,11 @@ impl Adjust {
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
                 for (k, &variable) in self.variables.iter().enumerate() {
-                    jacobian[(i * 3 + j, k)] =
-                        measurement.partial_derivative_in_body_frame(dimension, variable);
+                    jacobian[(i * 3 + j, k)] = measurement.partial_derivative_in_body_frame(
+                        dimension,
+                        variable,
+                        self.las_scan_angle,
+                    );
                 }
             }
         }
@@ -232,7 +246,12 @@ impl Adjust {
             .iter()
             .map(|m| m.with_config(config))
             .collect();
-        Adjust::new_iteration(measurements, self.variables.clone(), self.history.clone())
+        Adjust::new_iteration(
+            measurements,
+            self.variables.clone(),
+            self.history.clone(),
+            self.las_scan_angle,
+        )
     }
 }
 
