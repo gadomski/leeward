@@ -45,12 +45,14 @@ pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>
     }
     let trajectory = Trajectory::from_path(sbet)?;
     let config = Config::from_path(config)?;
-    let mut measurements = Vec::new();
-    for result in las::Reader::from_path(las)?.points().step_by(decimation) {
-        let point = result?;
-        measurements.push(Measurement::new(&trajectory, point, config)?);
-    }
-    Ok(measurements)
+    las::Reader::from_path(las)?
+        .points()
+        .step_by(decimation)
+        .map(|r| {
+            r.map_err(Error::from)
+                .and_then(|p| Measurement::new(&trajectory, p, config))
+        })
+        .collect()
 }
 
 /// A measurement combines trajectory information with the lidar point.
@@ -242,10 +244,10 @@ impl Measurement {
     /// ```
     pub fn body_frame(&self) -> Point {
         let projected = Point::new(self.las.x, self.las.y, self.las.z);
-        let plane = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
+        let platform = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
         convert::projected_to_body(
             projected,
-            plane,
+            platform,
             RollPitchYaw::new(self.sbet.roll, self.sbet.pitch, self.sbet.yaw),
             self.config.utm_zone,
         )
@@ -298,7 +300,7 @@ impl Measurement {
 
     /// Returns this measurement's scan angle in radians.
     ///
-    /// If the argument is false, this value is taken from the las point in the body frame of the plane.
+    /// If the argument is false, this value is taken from the las point in the body frame of the platform.
     /// If true, the scan angle is from the las file (converted to radians).
     ///
     /// # Examples

@@ -2,7 +2,7 @@ use anyhow::Error;
 use sbet::{Point, Reader};
 use std::{collections::HashMap, path::Path};
 
-/// A plane's trajectory.
+/// A platform's trajectory.
 #[derive(Debug)]
 pub struct Trajectory {
     points: HashMap<i64, Point>,

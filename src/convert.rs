@@ -19,14 +19,14 @@ pub const WGS_84: Ellipsoid = Ellipsoid {
 /// ```
 /// # use leeward::{convert, Point, RollPitchYaw};
 /// let point = Point::new(320000.34, 4181319.35, 2687.59);
-/// let plane = Point::new(-119.0434f64.to_radians(), 37.7614978f64.to_radians(), 2687.59);
+/// let platform = Point::new(-119.0434f64.to_radians(), 37.7614978f64.to_radians(), 2687.59);
 /// let rpy = RollPitchYaw::new(0., 0., 0.4);
-/// let body = convert::projected_to_body(point, plane, rpy, 11);
+/// let body = convert::projected_to_body(point, platform, rpy, 11);
 /// ```
-pub fn projected_to_body(point: Point, plane: Point, rpy: RollPitchYaw, utm_zone: u8) -> Point {
+pub fn projected_to_body(point: Point, platform: Point, rpy: RollPitchYaw, utm_zone: u8) -> Point {
     let geodetic = projected_to_geodetic(point, utm_zone);
     let geocentric = geodetic_to_ecef(geodetic);
-    let navigation = ecef_to_navigation(geocentric, plane);
+    let navigation = ecef_to_navigation(geocentric, platform);
     navigation_to_body(navigation, rpy)
 }
 
@@ -95,13 +95,13 @@ pub fn geodetic_to_ecef(point: Point) -> Point {
 /// ```
 /// use leeward::{convert, Point};
 /// let ecef = Point::new(-2452031., -4415678., 3886195.);
-/// let plane = Point::new(-119.0434, 37.7615, 2687.59);
-/// let navigation = convert::ecef_to_navigation(ecef, plane);
+/// let platform = Point::new(-119.0434, 37.7615, 2687.59);
+/// let navigation = convert::ecef_to_navigation(ecef, platform);
 /// ```
-pub fn ecef_to_navigation(point: Point, plane: Point) -> Point {
-    let plane_ecef = geodetic_to_ecef(plane);
-    let matrix = ecef_to_navigation_matrix(plane);
-    matrix * (point - plane_ecef)
+pub fn ecef_to_navigation(point: Point, platform: Point) -> Point {
+    let platform_ecef = geodetic_to_ecef(platform);
+    let matrix = ecef_to_navigation_matrix(platform);
+    matrix * (point - platform_ecef)
 }
 
 /// Converts a navigation frame point to body frame.

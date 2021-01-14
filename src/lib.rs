@@ -2,7 +2,7 @@
 //!
 //! Here's some fun stuff you can do:
 //!
-//! - Use the trajectory to transform the point cloud into the body frame of the plane:
+//! - Use the trajectory to transform the point cloud into the body frame of the platform:
 //!
 //! ```
 //! use leeward::Point;
