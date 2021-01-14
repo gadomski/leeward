@@ -503,7 +503,11 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    ///
+    /// # use leeward::Config;
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let mut config = Config::from_path("data/config.toml").unwrap();
+    /// config.lever_arm.x = 1.0;
+    /// let measurement = measurements[0].with_config(config);
     /// ```
     pub fn with_config(&self, config: Config) -> Measurement {
         Measurement {
