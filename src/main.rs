@@ -13,7 +13,7 @@ fn main() -> Result<(), Error> {
     let matches = App::from_yaml(yaml)
         .setting(AppSettings::DisableHelpSubcommand)
         .get_matches();
-    let measurements = leeward::measurements_with_decimation(
+    let measurements = leeward::decimated_measurements(
         matches.value_of("SBET").unwrap(),
         matches.value_of("LAS").unwrap(),
         matches.value_of("CONFIG").unwrap(),

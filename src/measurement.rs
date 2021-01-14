@@ -18,7 +18,7 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     las: P1,
     config: P2,
 ) -> Result<Vec<Measurement>, Error> {
-    measurements_with_decimation(sbet, las, config, 1)
+    decimated_measurements(sbet, las, config, 1)
 }
 
 /// Reads in a vector of measurements from files with the provided decimation.
@@ -26,14 +26,14 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
 /// # Examples
 ///
 /// ```
-/// let measurements = leeward::measurements_with_decimation(
+/// let measurements = leeward::decimated_measurements(
 ///     "data/sbet.out",
 ///     "data/points.las",
 ///     "data/config.toml",
 ///     100
 /// ).unwrap();
 /// ```
-pub fn measurements_with_decimation<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
+pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     sbet: P0,
     las: P1,
     config: P2,
