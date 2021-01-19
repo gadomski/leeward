@@ -17,7 +17,7 @@ pub fn measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     sbet: P0,
     las: P1,
     config: P2,
-) -> Result<Vec<Measurement>, Error> {
+) -> Result<Vec<Measurement<las::Point>>, Error> {
     decimated_measurements(sbet, las, config, 1)
 }
 
@@ -38,7 +38,7 @@ pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>
     las: P1,
     config: P2,
     decimation: usize,
-) -> Result<Vec<Measurement>, Error> {
+) -> Result<Vec<Measurement<las::Point>>, Error> {
     use las::Read;
     if decimation == 0 {
         return Err(anyhow!("cannot decimate by zero"));
@@ -57,13 +57,39 @@ pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>
 
 /// A measurement combines trajectory information with the lidar point.
 #[derive(Debug)]
-pub struct Measurement {
-    las: las::Point,
+pub struct Measurement<L: Lidar> {
+    lidar: L,
     sbet: sbet::Point,
     config: Config,
 }
 
-impl Measurement {
+/// A trait implemented by 3D points with ancillary lidar information, e.g. `las::Point`.
+pub trait Lidar: Clone {
+    /// Returns the gps time from this point, or `None` if it is not defined.
+    ///
+    /// We can't really do anything useful without time, but since las points can
+    /// come in w/o time we have to handle that case.
+    fn time(&self) -> Option<f64>;
+
+    /// Returns the x coordinate of this point.
+    fn x(&self) -> f64;
+
+    /// Returns the y coordinate of this point.
+    fn y(&self) -> f64;
+
+    /// Returns the z coordinate of this point.
+    fn z(&self) -> f64;
+
+    /// Returns the xyz point.
+    fn point(&self) -> Point {
+        Point::new(self.x(), self.y(), self.z())
+    }
+
+    /// Returns the scan angle of this point.
+    fn scan_angle(&self) -> f64;
+}
+
+impl<L: Lidar> Measurement<L> {
     /// Creates a new measurement.
     ///
     /// # Examples
@@ -81,24 +107,19 @@ impl Measurement {
     ///     .unwrap();
     /// let measurement = Measurement::new(&trajectory, point, config).unwrap();
     /// ```
-    pub fn new(
-        trajectory: &Trajectory,
-        las: las::Point,
-        config: Config,
-    ) -> Result<Measurement, Error> {
-        let gps_time = las.gps_time.ok_or(anyhow!("missing gps time on point"))?;
-        let sbet = trajectory.get(gps_time).ok_or(anyhow!(
-            "could not find sbet point for gps time: {}",
-            gps_time
-        ))?;
+    pub fn new(trajectory: &Trajectory, lidar: L, config: Config) -> Result<Measurement<L>, Error> {
+        let time = lidar.time().ok_or(anyhow!("missing time on point"))?;
+        let sbet = trajectory
+            .get(time)
+            .ok_or(anyhow!("could not find sbet point for time: {}", time))?;
         Ok(Measurement {
-            las,
+            lidar,
             sbet: *sbet,
             config,
         })
     }
 
-    /// Returns the x coordinate of this measurement, from the las point.
+    /// Returns the x coordinate of this measurement, from the lidar point.
     ///
     /// # Examples
     ///
@@ -117,7 +138,7 @@ impl Measurement {
     /// assert_eq!(point.x, measurement.x());
     /// ```
     pub fn x(&self) -> f64 {
-        self.las.x
+        self.lidar.x()
     }
 
     /// Returns the y coordinate of this measurement, from the las point.
@@ -139,7 +160,7 @@ impl Measurement {
     /// assert_eq!(point.y, measurement.y());
     /// ```
     pub fn y(&self) -> f64 {
-        self.las.y
+        self.lidar.y()
     }
 
     /// Returns the z coordinate of this measurement, from the las point.
@@ -161,7 +182,7 @@ impl Measurement {
     /// assert_eq!(point.z, measurement.z());
     /// ```
     pub fn z(&self) -> f64 {
-        self.las.z
+        self.lidar.z()
     }
 
     /// Returns the roll of this measurement, from the sbet.
@@ -221,7 +242,9 @@ impl Measurement {
     /// assert_eq!(point.gps_time.unwrap(), measurement.time());
     /// ```
     pub fn time(&self) -> f64 {
-        self.las.gps_time.unwrap()
+        self.lidar
+            .time()
+            .expect("time should be something because we check when creating the measurement")
     }
 
     /// Returns this measurement in the body frame of the aircraft.
@@ -243,7 +266,7 @@ impl Measurement {
     /// let body_frame = measurement.body_frame();
     /// ```
     pub fn body_frame(&self) -> Point {
-        let projected = Point::new(self.las.x, self.las.y, self.las.z);
+        let projected = self.lidar.point();
         let platform = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
         convert::projected_to_body(
             projected,
@@ -263,8 +286,8 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let body_frame = measurements[0].body_frame_from_config(false);
     /// ```
-    pub fn body_frame_from_config(&self, las_scan_angle: bool) -> Point {
-        self.boresight() * self.scanner(las_scan_angle) - self.lever_arm()
+    pub fn body_frame_from_config(&self, lidar_scan_angle: bool) -> Point {
+        self.boresight() * self.scanner(lidar_scan_angle) - self.lever_arm()
     }
 
     /// Returns this measurement's point in the scanner reference frame.
@@ -277,9 +300,9 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let scanner = measurements[0].scanner(false);
     /// ```
-    pub fn scanner(&self, las_scan_angle: bool) -> Point {
+    pub fn scanner(&self, lidar_scan_angle: bool) -> Point {
         let range = self.range();
-        let scan_angle = self.scan_angle(las_scan_angle);
+        let scan_angle = self.scan_angle(lidar_scan_angle);
         Point::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
     }
 
@@ -309,9 +332,9 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let scan_angle = measurements[0].scan_angle(false);
     /// ```
-    pub fn scan_angle(&self, las: bool) -> f64 {
-        if las {
-            f64::from(self.las.scan_angle).to_radians()
+    pub fn scan_angle(&self, lidar: bool) -> f64 {
+        if lidar {
+            self.lidar.scan_angle().to_radians()
         } else {
             let body_frame = self.body_frame();
             body_frame.y.signum()
@@ -365,10 +388,10 @@ impl Measurement {
         &self,
         dimension: Dimension,
         variable: Variable,
-        las_scan_angle: bool,
+        lidar_scan_angle: bool,
     ) -> f64 {
         let range = self.range();
-        let scan_angle = self.scan_angle(las_scan_angle);
+        let scan_angle = self.scan_angle(lidar_scan_angle);
         let sa = scan_angle.sin();
         let ca = scan_angle.cos();
         let sr = self.config.boresight.roll.sin();
@@ -509,9 +532,9 @@ impl Measurement {
     /// config.lever_arm.x = 1.0;
     /// let measurement = measurements[0].with_config(config);
     /// ```
-    pub fn with_config(&self, config: Config) -> Measurement {
+    pub fn with_config(&self, config: Config) -> Measurement<L> {
         Measurement {
-            las: self.las.clone(),
+            lidar: self.lidar.clone(),
             sbet: self.sbet,
             config: config,
         }
@@ -529,8 +552,30 @@ impl Measurement {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let residuals = measurements[0].residuals(false);
     /// ```
-    pub fn residuals(&self, las_scan_angle: bool) -> Point {
-        self.body_frame_from_config(las_scan_angle) - self.body_frame()
+    pub fn residuals(&self, lidar_scan_angle: bool) -> Point {
+        self.body_frame_from_config(lidar_scan_angle) - self.body_frame()
+    }
+}
+
+impl Lidar for las::Point {
+    fn time(&self) -> Option<f64> {
+        self.gps_time
+    }
+
+    fn x(&self) -> f64 {
+        self.x
+    }
+
+    fn y(&self) -> f64 {
+        self.y
+    }
+
+    fn z(&self) -> f64 {
+        self.z
+    }
+
+    fn scan_angle(&self) -> f64 {
+        f64::from(self.scan_angle)
     }
 }
 

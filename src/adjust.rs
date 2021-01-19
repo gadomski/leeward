@@ -35,7 +35,7 @@
 //! let final_config = last_iteration.config;
 //! assert_eq!(final_config, config);
 //! ```
-use crate::{Config, Dimension, Measurement, Variable};
+use crate::{Config, Dimension, Lidar, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 
@@ -54,8 +54,8 @@ const LEVER_ARM_VARIABLES: [Variable; 3] = [
 
 /// Adjust structure.
 #[derive(Debug)]
-pub struct Adjust {
-    measurements: Vec<Measurement>,
+pub struct Adjust<L: Lidar> {
+    measurements: Vec<Measurement<L>>,
     rmse: f64,
     residuals: DVector<f64>,
     tolerance: f64,
@@ -75,7 +75,7 @@ pub struct Record {
     pub las_scan_angle: bool,
 }
 
-impl Adjust {
+impl<L: Lidar> Adjust<L> {
     /// Creates a new adjust for the provided measurements.
     ///
     /// # Examples
@@ -85,7 +85,7 @@ impl Adjust {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let adjust = Adjust::new(measurements).unwrap();
     /// ```
-    pub fn new(measurements: Vec<Measurement>) -> Result<Adjust, Error> {
+    pub fn new(measurements: Vec<Measurement<L>>) -> Result<Adjust<L>, Error> {
         Adjust::new_iteration(
             measurements,
             BORESIGHT_VARIABLES.to_vec(),
@@ -115,11 +115,11 @@ impl Adjust {
     }
 
     fn new_iteration(
-        measurements: Vec<Measurement>,
+        measurements: Vec<Measurement<L>>,
         variables: Vec<Variable>,
         mut history: Vec<Record>,
         las_scan_angle: bool,
-    ) -> Result<Adjust, Error> {
+    ) -> Result<Adjust<L>, Error> {
         if measurements.is_empty() {
             return Err(anyhow!("cannot create adjust with no measurements"));
         }
@@ -193,7 +193,7 @@ impl Adjust {
     /// let adjust = Adjust::new(measurements).unwrap();
     /// let adjust = adjust.adjust().unwrap();
     /// ```
-    pub fn adjust(self) -> Result<Adjust, Error> {
+    pub fn adjust(self) -> Result<Adjust<L>, Error> {
         let next = self.next()?;
         let delta = self.rmse - next.rmse;
         if delta < self.tolerance {
@@ -219,7 +219,7 @@ impl Adjust {
         &self.history
     }
 
-    fn next(&self) -> Result<Adjust, Error> {
+    fn next(&self) -> Result<Adjust<L>, Error> {
         let mut jacobian = DMatrix::zeros(self.residuals.len(), self.variables.len());
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn no_measurements() {
-        assert!(Adjust::new(vec![]).is_err());
+        assert!(Adjust::<las::Point>::new(vec![]).is_err());
     }
 
     #[test]

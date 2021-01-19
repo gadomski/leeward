@@ -2,7 +2,8 @@
 //!
 //! Used to interaction w/ PDAL via https://github.com/gadomski/leeward-pdal.
 
-use crate::{Config, Trajectory};
+use crate::{Config, Lidar, Measurement, Trajectory};
+use anyhow::Error;
 use libc::c_char;
 use std::{ffi::CStr, ptr};
 
@@ -70,10 +71,28 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 /// capi::leeward_free(leeward);
 /// ```
 pub extern "C" fn leeward_measurement(
-    _leeward: *mut Leeward,
-    _point: LeewardPoint,
+    leeward: *mut Leeward,
+    point: LeewardPoint,
 ) -> *mut LeewardMeasurement {
-    unimplemented!()
+    if leeward.is_null() {
+        eprintln!("leeward c api error: leeward pointer is null");
+        return ptr::null_mut();
+    }
+    let leeward = match unsafe { leeward.as_ref() } {
+        Some(leeward) => leeward,
+        None => {
+            eprintln!("leeward c api error: could not get reference to leeward object");
+            return ptr::null_mut();
+        }
+    };
+    let measurement = match leeward.measurement(point) {
+        Ok(measurement) => measurement,
+        Err(err) => {
+            eprintln!("leeward c api error: {}", err);
+            return ptr::null_mut();
+        }
+    };
+    Box::into_raw(Box::new(measurement))
 }
 
 /// Free an allocated `LeewardMeasurement` structure.
@@ -104,7 +123,7 @@ pub struct Leeward {
 /// A structure to contain only the essential bits of a lidar point.
 ///
 /// "Essential" only goes as far as this application, of course.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct LeewardPoint {
     pub x: f64,
@@ -119,6 +138,41 @@ pub struct LeewardPoint {
 #[repr(C)]
 pub struct LeewardMeasurement {}
 
+impl Leeward {
+    fn measurement(&self, point: LeewardPoint) -> Result<LeewardMeasurement, Error> {
+        Measurement::new(&self.trajectory, point, self.config)
+            .and_then(|m| LeewardMeasurement::new(m))
+    }
+}
+
+impl Lidar for LeewardPoint {
+    fn time(&self) -> Option<f64> {
+        Some(self.time)
+    }
+
+    fn x(&self) -> f64 {
+        self.x
+    }
+
+    fn y(&self) -> f64 {
+        self.y
+    }
+
+    fn z(&self) -> f64 {
+        self.z
+    }
+
+    fn scan_angle(&self) -> f64 {
+        self.scan_angle
+    }
+}
+
+impl LeewardMeasurement {
+    fn new(_measurement: Measurement<LeewardPoint>) -> Result<LeewardMeasurement, Error> {
+        unimplemented!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
@@ -129,6 +183,24 @@ mod tests {
         let config = CString::new("data/config.toml").unwrap();
         let leeward = super::leeward_new(sbet.as_ptr(), config.as_ptr());
         assert!(!leeward.is_null());
+        super::leeward_free(leeward);
+    }
+
+    #[test]
+    fn measurement() {
+        let sbet = CString::new("data/sbet.out").unwrap();
+        let config = CString::new("data/config.toml").unwrap();
+        let leeward = super::leeward_new(sbet.as_ptr(), config.as_ptr());
+        let point = super::LeewardPoint {
+            x: 320000.34,
+            y: 4181319.35,
+            z: 2687.58,
+            scan_angle: 22.,
+            time: 400825.8057,
+        };
+        let measurement = super::leeward_measurement(leeward, point);
+        assert!(!measurement.is_null());
+        super::leeward_measurement_free(measurement);
         super::leeward_free(leeward);
     }
 }

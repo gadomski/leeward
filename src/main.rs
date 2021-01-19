@@ -1,7 +1,7 @@
 use anyhow::Error;
 use clap::{load_yaml, App, AppSettings};
 use csv::Writer;
-use leeward::{Adjust, Config, Measurement};
+use leeward::{Adjust, Config, Lidar, Measurement};
 use serde::Serialize;
 use std::{
     fs::File,
@@ -84,7 +84,7 @@ struct Record {
 }
 
 impl BodyFrame {
-    fn new(measurement: &Measurement) -> Result<BodyFrame, Error> {
+    fn new<L: Lidar>(measurement: &Measurement<L>) -> Result<BodyFrame, Error> {
         let body_frame = measurement.body_frame();
         let body_frame_config_computed = measurement.body_frame_from_config(false);
         let body_frame_config_las = measurement.body_frame_from_config(true);
