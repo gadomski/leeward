@@ -20,6 +20,7 @@ mod config;
 pub mod convert;
 mod measurement;
 mod trajectory;
+pub mod utils;
 
 pub use adjust::Adjust;
 pub use config::Config;

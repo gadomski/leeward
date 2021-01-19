@@ -1,7 +1,7 @@
 use anyhow::Error;
 use clap::{load_yaml, App, AppSettings};
 use csv::Writer;
-use leeward::{Adjust, Config, Lasish, Measurement};
+use leeward::{utils, Adjust, Config, Lasish, Measurement};
 use serde::Serialize;
 use std::{
     fs::File,
@@ -48,6 +48,16 @@ fn main() -> Result<(), Error> {
         for result in measurements.into_iter().map(|m| BodyFrame::new(&m)) {
             let body_frame = result?;
             writer.serialize(body_frame)?;
+        }
+    } else if let Some(matches) = matches.subcommand_matches("best_fit_plane") {
+        let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
+            Box::new(File::create(outfile)?)
+        } else {
+            Box::new(io::stdout())
+        };
+        let mut writer = Writer::from_writer(write);
+        for point in utils::fit_to_plane_in_body_frame(&measurements) {
+            writer.serialize(point)?;
         }
     }
     Ok(())
