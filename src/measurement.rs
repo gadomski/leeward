@@ -295,10 +295,10 @@ impl<L: Lasish> Measurement<L> {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let body_frame = measurements[0].body_frame_from_config(false);
+    /// let body_frame = measurements[0].modeled_body_frame(false);
     /// ```
-    pub fn body_frame_from_config(&self, lidar_scan_angle: bool) -> Point {
-        self.boresight() * self.scanner(lidar_scan_angle) - self.lever_arm()
+    pub fn modeled_body_frame(&self, lidar_scan_angle: bool) -> Point {
+        self.boresight() * self.modeled_scan_frame(lidar_scan_angle) - self.lever_arm()
     }
 
     /// Returns this measurement's point in the scanner reference frame.
@@ -309,9 +309,9 @@ impl<L: Lasish> Measurement<L> {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scanner = measurements[0].scanner(false);
+    /// let scanner = measurements[0].scan_frame_from_model(false);
     /// ```
-    pub fn scanner(&self, lidar_scan_angle: bool) -> Point {
+    pub fn modeled_scan_frame(&self, lidar_scan_angle: bool) -> Point {
         let range = self.range();
         let scan_angle = self.scan_angle(lidar_scan_angle);
         Point::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
@@ -564,7 +564,7 @@ impl<L: Lasish> Measurement<L> {
     /// let residuals = measurements[0].residuals(false);
     /// ```
     pub fn residuals(&self, lidar_scan_angle: bool) -> Point {
-        self.body_frame_from_config(lidar_scan_angle) - self.body_frame()
+        self.modeled_body_frame(lidar_scan_angle) - self.body_frame()
     }
 
     /// Returns this measurement's total propagated uncertainty.

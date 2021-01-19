@@ -1,6 +1,6 @@
 //! Utility functions.
 
-use crate::{Lasish, Matrix, Measurement, Point};
+use crate::{Lasish, Measurement, Point};
 use nalgebra::{Dynamic, MatrixMN, U3};
 
 /// Fits a bunch of measurements to a plane in the platform's body frame.
