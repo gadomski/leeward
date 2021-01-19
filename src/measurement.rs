@@ -63,6 +63,17 @@ pub struct Measurement<L: Lasish> {
     config: Config,
 }
 
+/// The total propagated uncertainty for a measurement.
+#[derive(Debug)]
+pub struct Uncertainty {
+    pub x: f64,
+    pub y: f64,
+    pub horizontal: f64,
+    pub vertical: f64,
+    pub total: f64,
+    pub incidence_angle: f64,
+}
+
 /// A trait implemented by 3D points with ancillary lidar information, e.g. `las::Point`.
 pub trait Lasish: Clone {
     /// Returns the gps time from this point, or `None` if it is not defined.
@@ -555,6 +566,18 @@ impl<L: Lasish> Measurement<L> {
     pub fn residuals(&self, lidar_scan_angle: bool) -> Point {
         self.body_frame_from_config(lidar_scan_angle) - self.body_frame()
     }
+
+    /// Returns this measurement's total propagated uncertainty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+    /// let uncertainty = measurements[0].uncertainty().unwrap();
+    /// ```
+    pub fn uncertainty(&self) -> Result<Uncertainty, Error> {
+        unimplemented!()
+    }
 }
 
 impl Lasish for las::Point {
@@ -611,5 +634,12 @@ mod tests {
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let range = measurements[0].range();
         assert_relative_eq!(4660.10, range, max_relative = 1e-2);
+    }
+
+    #[test]
+    fn uncertainty() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let _uncertainty = measurements[0].uncertainty().unwrap();
     }
 }

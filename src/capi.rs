@@ -139,7 +139,12 @@ pub struct LeewardPoint {
 /// An structure that contains all the information that leeward can calculate for a point.
 #[derive(Debug)]
 #[repr(C)]
-pub struct LeewardMeasurement {}
+pub struct LeewardMeasurement {
+    horizontal_uncertainty: f64,
+    vertical_uncertainty: f64,
+    total_uncertainty: f64,
+    incidence_angle: f64,
+}
 
 impl Leeward {
     fn measurement(&self, point: LeewardPoint) -> Result<LeewardMeasurement, Error> {
@@ -171,8 +176,14 @@ impl Lasish for LeewardPoint {
 }
 
 impl LeewardMeasurement {
-    fn new(_measurement: Measurement<LeewardPoint>) -> Result<LeewardMeasurement, Error> {
-        Ok(LeewardMeasurement {})
+    fn new(measurement: Measurement<LeewardPoint>) -> Result<LeewardMeasurement, Error> {
+        let uncertainty = measurement.uncertainty()?;
+        Ok(LeewardMeasurement {
+            horizontal_uncertainty: uncertainty.horizontal,
+            vertical_uncertainty: uncertainty.vertical,
+            total_uncertainty: uncertainty.total,
+            incidence_angle: uncertainty.incidence_angle,
+        })
     }
 }
 
