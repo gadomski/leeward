@@ -2,7 +2,7 @@
 //!
 //! Used to interaction w/ PDAL via https://github.com/gadomski/leeward-pdal.
 
-use crate::{Config, Lasish, Measurement, Trajectory};
+use crate::{Config, Lasish, Measurement, Point, Trajectory};
 use anyhow::Error;
 use libc::c_char;
 use std::{ffi::CStr, ptr};
@@ -74,6 +74,7 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 pub extern "C" fn leeward_measurement(
     leeward: *mut Leeward,
     point: LeewardPoint,
+    normal: LeewardNormal,
 ) -> *mut LeewardMeasurement {
     if leeward.is_null() {
         eprintln!("leeward c api error: leeward pointer is null");
@@ -86,7 +87,7 @@ pub extern "C" fn leeward_measurement(
             return ptr::null_mut();
         }
     };
-    let measurement = match leeward.measurement(point) {
+    let measurement = match leeward.measurement(point, normal) {
         Ok(measurement) => measurement,
         Err(err) => {
             eprintln!("leeward c api error: {}", err);
@@ -136,6 +137,15 @@ pub struct LeewardPoint {
     pub time: f64,
 }
 
+/// A unit normal.
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct LeewardNormal {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
 /// An structure that contains all the information that leeward can calculate for a point.
 #[derive(Debug)]
 #[repr(C)]
@@ -147,9 +157,13 @@ pub struct LeewardMeasurement {
 }
 
 impl Leeward {
-    fn measurement(&self, point: LeewardPoint) -> Result<LeewardMeasurement, Error> {
+    fn measurement(
+        &self,
+        point: LeewardPoint,
+        normal: LeewardNormal,
+    ) -> Result<LeewardMeasurement, Error> {
         Measurement::new(&self.trajectory, point, self.config)
-            .and_then(|m| LeewardMeasurement::new(m))
+            .and_then(|m| LeewardMeasurement::new(m, normal))
     }
 }
 
@@ -176,14 +190,23 @@ impl Lasish for LeewardPoint {
 }
 
 impl LeewardMeasurement {
-    fn new(measurement: Measurement<LeewardPoint>) -> Result<LeewardMeasurement, Error> {
-        let uncertainty = measurement.uncertainty()?;
+    fn new(
+        measurement: Measurement<LeewardPoint>,
+        normal: LeewardNormal,
+    ) -> Result<LeewardMeasurement, Error> {
+        let uncertainty = measurement.uncertainty(normal.into())?;
         Ok(LeewardMeasurement {
             horizontal_uncertainty: uncertainty.horizontal,
             vertical_uncertainty: uncertainty.vertical,
             total_uncertainty: uncertainty.total,
             incidence_angle: uncertainty.incidence_angle,
         })
+    }
+}
+
+impl From<LeewardNormal> for Point {
+    fn from(normal: LeewardNormal) -> Point {
+        Point::new(normal.x, normal.y, normal.z)
     }
 }
 
@@ -212,7 +235,12 @@ mod tests {
             scan_angle: 22.,
             time: 400825.8057,
         };
-        let measurement = super::leeward_measurement(leeward, point);
+        let normal = super::LeewardNormal {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        };
+        let measurement = super::leeward_measurement(leeward, point, normal);
         assert!(!measurement.is_null());
         super::leeward_measurement_free(measurement);
         super::leeward_free(leeward);

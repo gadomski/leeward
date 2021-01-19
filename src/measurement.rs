@@ -575,7 +575,7 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let uncertainty = measurements[0].uncertainty().unwrap();
     /// ```
-    pub fn uncertainty(&self) -> Result<Uncertainty, Error> {
+    pub fn uncertainty(&self, _normal: Point) -> Result<Uncertainty, Error> {
         unimplemented!()
     }
 }
@@ -604,6 +604,7 @@ impl Lasish for las::Point {
 
 #[cfg(test)]
 mod tests {
+    use crate::Point;
     use approx::assert_relative_eq;
 
     #[test]
@@ -640,6 +641,6 @@ mod tests {
     fn uncertainty() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let _uncertainty = measurements[0].uncertainty().unwrap();
+        let _uncertainty = measurements[0].uncertainty(Point::new(0., 0., 1.)).unwrap();
     }
 }
