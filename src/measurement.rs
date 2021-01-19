@@ -57,14 +57,14 @@ pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>
 
 /// A measurement combines trajectory information with the lidar point.
 #[derive(Debug)]
-pub struct Measurement<L: Lidar> {
+pub struct Measurement<L: Lasish> {
     lidar: L,
     sbet: sbet::Point,
     config: Config,
 }
 
 /// A trait implemented by 3D points with ancillary lidar information, e.g. `las::Point`.
-pub trait Lidar: Clone {
+pub trait Lasish: Clone {
     /// Returns the gps time from this point, or `None` if it is not defined.
     ///
     /// We can't really do anything useful without time, but since las points can
@@ -89,7 +89,7 @@ pub trait Lidar: Clone {
     fn scan_angle(&self) -> f64;
 }
 
-impl<L: Lidar> Measurement<L> {
+impl<L: Lasish> Measurement<L> {
     /// Creates a new measurement.
     ///
     /// # Examples
@@ -557,7 +557,7 @@ impl<L: Lidar> Measurement<L> {
     }
 }
 
-impl Lidar for las::Point {
+impl Lasish for las::Point {
     fn time(&self) -> Option<f64> {
         self.gps_time
     }

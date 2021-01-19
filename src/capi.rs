@@ -2,7 +2,7 @@
 //!
 //! Used to interaction w/ PDAL via https://github.com/gadomski/leeward-pdal.
 
-use crate::{Config, Lidar, Measurement, Trajectory};
+use crate::{Config, Lasish, Measurement, Trajectory};
 use anyhow::Error;
 use libc::c_char;
 use std::{ffi::CStr, ptr};
@@ -145,7 +145,7 @@ impl Leeward {
     }
 }
 
-impl Lidar for LeewardPoint {
+impl Lasish for LeewardPoint {
     fn time(&self) -> Option<f64> {
         Some(self.time)
     }

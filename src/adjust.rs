@@ -35,7 +35,7 @@
 //! let final_config = last_iteration.config;
 //! assert_eq!(final_config, config);
 //! ```
-use crate::{Config, Dimension, Lidar, Measurement, Variable};
+use crate::{Config, Dimension, Lasish, Measurement, Variable};
 use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 
@@ -54,7 +54,7 @@ const LEVER_ARM_VARIABLES: [Variable; 3] = [
 
 /// Adjust structure.
 #[derive(Debug)]
-pub struct Adjust<L: Lidar> {
+pub struct Adjust<L: Lasish> {
     measurements: Vec<Measurement<L>>,
     rmse: f64,
     residuals: DVector<f64>,
@@ -75,7 +75,7 @@ pub struct Record {
     pub las_scan_angle: bool,
 }
 
-impl<L: Lidar> Adjust<L> {
+impl<L: Lasish> Adjust<L> {
     /// Creates a new adjust for the provided measurements.
     ///
     /// # Examples

@@ -23,7 +23,7 @@ mod trajectory;
 
 pub use adjust::Adjust;
 pub use config::Config;
-pub use measurement::{decimated_measurements, measurements, Lidar, Measurement};
+pub use measurement::{decimated_measurements, measurements, Lasish, Measurement};
 use serde::{Deserialize, Serialize};
 pub use trajectory::Trajectory;
 
