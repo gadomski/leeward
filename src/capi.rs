@@ -169,7 +169,7 @@ impl Lasish for LeewardPoint {
 
 impl LeewardMeasurement {
     fn new(_measurement: Measurement<LeewardPoint>) -> Result<LeewardMeasurement, Error> {
-        unimplemented!()
+        Ok(LeewardMeasurement {})
     }
 }
 
