@@ -47,6 +47,44 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
     Box::into_raw(Box::new(leeward))
 }
 
+/// Returns a measurement, which contains a slew of information about the provided las point.
+///
+/// # Examples
+///
+/// ```
+/// # use leeward::capi;
+/// # use std::ffi::CString;
+/// let sbet = CString::new("data/sbet.out").unwrap();
+/// let config = CString::new("data/config.toml").unwrap();
+/// let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
+/// let point = capi::LeewardPoint {
+///     x: 320000.34,
+///     y: 4181319.35,
+///     z: 2687.58,
+///     scan_angle: 22.,
+///     time: 400825.8057,
+/// };
+/// let measurement = capi::leeward_measurement(leeward, point);
+/// assert!(!measurement.is_null());
+/// capi::leeward_measurement_free(measurement);
+/// capi::leeward_free(leeward);
+/// ```
+pub extern "C" fn leeward_measurement(
+    _leeward: *mut Leeward,
+    _point: LeewardPoint,
+) -> *mut LeewardMeasurement {
+    unimplemented!()
+}
+
+/// Free an allocated `LeewardMeasurement` structure.
+pub extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement) {
+    if measurement.is_null() {
+        // pass
+    } else {
+        drop(unsafe { Box::from_raw(measurement) })
+    }
+}
+
 /// Free an allocated `Leeward` structure.
 pub extern "C" fn leeward_free(leeward: *mut Leeward) {
     if leeward.is_null() {
@@ -62,6 +100,24 @@ pub struct Leeward {
     config: Config,
     trajectory: Trajectory,
 }
+
+/// A structure to contain only the essential bits of a lidar point.
+///
+/// "Essential" only goes as far as this application, of course.
+#[derive(Debug)]
+#[repr(C)]
+pub struct LeewardPoint {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub scan_angle: f64,
+    pub time: f64,
+}
+
+/// An structure that contains all the information that leeward can calculate for a point.
+#[derive(Debug)]
+#[repr(C)]
+pub struct LeewardMeasurement {}
 
 #[cfg(test)]
 mod tests {
