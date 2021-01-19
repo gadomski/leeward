@@ -121,6 +121,8 @@ pub fn navigation_to_body(point: Point, rpy: RollPitchYaw) -> Point {
 /// An ellipsoid.
 ///
 /// Some of the fields are derived, but required to minimise computations when using the ellipsoid.
+///
+/// cbindgen:ignore
 #[derive(Clone, Copy, Debug)]
 pub struct Ellipsoid {
     a: f64,

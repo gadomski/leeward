@@ -70,6 +70,7 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 /// capi::leeward_measurement_free(measurement);
 /// capi::leeward_free(leeward);
 /// ```
+#[no_mangle]
 pub extern "C" fn leeward_measurement(
     leeward: *mut Leeward,
     point: LeewardPoint,
@@ -96,6 +97,7 @@ pub extern "C" fn leeward_measurement(
 }
 
 /// Free an allocated `LeewardMeasurement` structure.
+#[no_mangle]
 pub extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement) {
     if measurement.is_null() {
         // pass
@@ -105,6 +107,7 @@ pub extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement)
 }
 
 /// Free an allocated `Leeward` structure.
+#[no_mangle]
 pub extern "C" fn leeward_free(leeward: *mut Leeward) {
     if leeward.is_null() {
         // pass
