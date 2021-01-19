@@ -11,7 +11,3 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(pdal_plugin_filter_leeward SHARED LeewardFilter.cpp)
 target_link_libraries(pdal_plugin_filter_leeward PRIVATE ${PDAL_LIBRARIES} Leeward::Leeward)
 install(TARGETS pdal_plugin_filter_leeward)
-
-add_library(pdal_plugin_filter_body_frame SHARED BodyFrameFilter.cpp)
-target_link_libraries(pdal_plugin_filter_body_frame PRIVATE ${PDAL_LIBRARIES} Leeward::Leeward)
-install(TARGETS pdal_plugin_filter_body_frame)

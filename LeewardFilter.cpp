@@ -14,11 +14,9 @@ namespace pdal
 
     void LeewardFilter::addDimensions(PointLayoutPtr layout)
     {
-        this->m_xUncertainty = layout->registerOrAssignDim("XUncertainty", Dimension::Type::Float);
-        this->m_yUncertainty = layout->registerOrAssignDim("YUncertainty", Dimension::Type::Float);
         this->m_horizontalUncertainty = layout->registerOrAssignDim("HorizontalUncertainty", Dimension::Type::Float);
         this->m_verticalUncertainty = layout->registerOrAssignDim("VerticalUncertainty", Dimension::Type::Float);
-        this->m_uncertainty = layout->registerOrAssignDim("Uncertainty", Dimension::Type::Float);
+        this->m_totalUncertainty = layout->registerOrAssignDim("TotalUncertainty", Dimension::Type::Float);
         this->m_incidenceAngle = layout->registerOrAssignDim("IncidenceAngle", Dimension::Type::Float);
     }
 
@@ -32,43 +30,42 @@ namespace pdal
     {
         if (this->m_sbet.empty())
         {
-            throw pdal_error("No SBET path provided, exiting...");
+            throw pdal_error("filters.leeward: no sbet path provided, exiting...");
         }
         if (this->m_config.empty())
         {
-            throw pdal_error("No config path provided, exiting...");
+            throw pdal_error("filters.leeward: no config path provided");
         }
         auto leeward = leeward_new(this->m_sbet.c_str(), this->m_config.c_str());
         if (!leeward)
         {
-            throw pdal_error("Error when creating leeward, exiting...");
+            throw pdal_error("filters.leeward: error when creating leeward object");
         }
         for (PointId id = 0; id < view.size(); ++id)
         {
-            struct LeewardLidar lidar;
-            lidar.x = view.getFieldAs<double>(Dimension::Id::X, id);
-            lidar.y = view.getFieldAs<double>(Dimension::Id::Y, id);
-            lidar.z = view.getFieldAs<double>(Dimension::Id::Z, id);
-            lidar.scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
-            lidar.time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
+            struct LeewardPoint point;
+            point.x = view.getFieldAs<double>(Dimension::Id::X, id);
+            point.y = view.getFieldAs<double>(Dimension::Id::Y, id);
+            point.z = view.getFieldAs<double>(Dimension::Id::Z, id);
+            point.scan_angle = view.getFieldAs<float>(Dimension::Id::ScanAngleRank, id);
+            point.time = view.getFieldAs<float>(Dimension::Id::GpsTime, id);
             struct LeewardNormal normal;
+            // TODO handle missing normal fields
             normal.x = view.getFieldAs<float>(Dimension::Id::NormalX, id);
             normal.y = view.getFieldAs<float>(Dimension::Id::NormalY, id);
             normal.z = view.getFieldAs<float>(Dimension::Id::NormalZ, id);
-            auto uncertainty = leeward_uncertainty_with_normal(leeward, &lidar, &normal);
-            if (uncertainty)
+            auto measurement = leeward_measurement(leeward, point, normal);
+            if (measurement)
             {
-                view.setField(this->m_xUncertainty, id, uncertainty->x);
-                view.setField(this->m_yUncertainty, id, uncertainty->y);
-                view.setField(this->m_horizontalUncertainty, id, uncertainty->horizontal);
-                view.setField(this->m_verticalUncertainty, id, uncertainty->vertical);
-                view.setField(this->m_uncertainty, id, uncertainty->total);
-                view.setField(this->m_incidenceAngle, id, uncertainty->incidence_angle * 180 / M_PI);
-                leeward_uncertainty_free(uncertainty);
+                view.setField(this->m_horizontalUncertainty, id, measurement->horizontal_uncertainty);
+                view.setField(this->m_verticalUncertainty, id, measurement->vertical_uncertainty);
+                view.setField(this->m_totalUncertainty, id, measurement->total_uncertainty);
+                view.setField(this->m_incidenceAngle, id, measurement->incidence_angle * 180 / M_PI);
+                leeward_measurement_free(measurement);
             }
             else
             {
-                std::cerr << "Error when creating uncertainty, skipping point..." << std::endl;
+                std::cerr << "filters.leeward: error when creating measurement at time " << point.time << ", skipping..." << std::endl;
             }
         }
         leeward_free(leeward);

@@ -19,11 +19,9 @@ namespace pdal
 
         std::string m_sbet;
         std::string m_config;
-        Dimension::Id m_xUncertainty;
-        Dimension::Id m_yUncertainty;
         Dimension::Id m_horizontalUncertainty;
         Dimension::Id m_verticalUncertainty;
-        Dimension::Id m_uncertainty;
+        Dimension::Id m_totalUncertainty;
         Dimension::Id m_incidenceAngle;
     };
 } // namespace pdal
