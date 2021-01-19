@@ -15,6 +15,7 @@
 //! ```
 
 pub mod adjust;
+pub mod capi;
 mod config;
 pub mod convert;
 mod measurement;
