@@ -17,22 +17,15 @@ args:
         takes_value: true
         short: d
         long: decimation
+    - outfile:
+        help: The output file, if not provided print to stdout
+        takes_value: true
+        short: o
+        long: outfile
 subcommands:
     - adjust:
         about: Computes the boresight adjustment
     - body-frame:
         about: Computes the points in the body frame of the aircraft
-        args:
-            - outfile:
-                help: The output file, if not provided print to stdout
-                takes_value: true
-                short: o
-                long: outfile
     - best-fit-plane:
         about: Computes the best fit plane for the points in the body frame of the platform
-        args:
-            - outfile:
-                help: The output file, if not provided print to stdout
-                takes_value: true
-                short: o
-                long: outfile

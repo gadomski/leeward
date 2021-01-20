@@ -23,38 +23,27 @@ fn main() -> Result<(), Error> {
             .transpose()?
             .unwrap_or(1),
     )?;
-    if let Some(_matches) = matches.subcommand_matches("adjust") {
+    let mut write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
+        Box::new(File::create(outfile)?)
+    } else {
+        Box::new(io::stdout())
+    };
+    if let Some(_) = matches.subcommand_matches("adjust") {
         let adjust = Adjust::new(measurements)?.adjust()?;
-        let mut write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
-            Box::new(File::create(outfile)?)
-        } else {
-            Box::new(io::stdout())
-        };
         writeln!(write, "{}", toml::to_string_pretty(&adjust.config())?)?;
-
         if let Some(history) = matches.value_of("history") {
             let mut writer = File::create(history).map(|f| Writer::from_writer(f))?;
             for (iteration, record) in adjust.history().iter().enumerate() {
                 writer.serialize(Record::new(iteration, record))?;
             }
         }
-    } else if let Some(matches) = matches.subcommand_matches("body-frame") {
-        let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
-            Box::new(File::create(outfile)?)
-        } else {
-            Box::new(io::stdout())
-        };
+    } else if let Some(_) = matches.subcommand_matches("body-frame") {
         let mut writer = Writer::from_writer(write);
         for result in measurements.into_iter().map(|m| BodyFrame::new(&m)) {
             let body_frame = result?;
             writer.serialize(body_frame)?;
         }
-    } else if let Some(matches) = matches.subcommand_matches("best-fit-plane") {
-        let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
-            Box::new(File::create(outfile)?)
-        } else {
-            Box::new(io::stdout())
-        };
+    } else if let Some(_) = matches.subcommand_matches("best-fit-plane") {
         let mut writer = Writer::from_writer(write);
         for point in utils::fit_to_plane_in_body_frame(&measurements) {
             writer.serialize(point)?;
