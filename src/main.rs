@@ -38,7 +38,7 @@ fn main() -> Result<(), Error> {
                 writer.serialize(Record::new(iteration, record))?;
             }
         }
-    } else if let Some(matches) = matches.subcommand_matches("body_frame") {
+    } else if let Some(matches) = matches.subcommand_matches("body-frame") {
         let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
             Box::new(File::create(outfile)?)
         } else {
@@ -49,7 +49,7 @@ fn main() -> Result<(), Error> {
             let body_frame = result?;
             writer.serialize(body_frame)?;
         }
-    } else if let Some(matches) = matches.subcommand_matches("best_fit_plane") {
+    } else if let Some(matches) = matches.subcommand_matches("best-fit-plane") {
         let write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
             Box::new(File::create(outfile)?)
         } else {

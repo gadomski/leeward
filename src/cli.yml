@@ -20,7 +20,7 @@ args:
 subcommands:
     - adjust:
         about: Computes the boresight adjustment
-    - body_frame:
+    - body-frame:
         about: Computes the points in the body frame of the aircraft
         args:
             - outfile:
@@ -28,7 +28,7 @@ subcommands:
                 takes_value: true
                 short: o
                 long: outfile
-    - best_fit_plane:
+    - best-fit-plane:
         about: Computes the best fit plane for the points in the body frame of the platform
         args:
             - outfile:
