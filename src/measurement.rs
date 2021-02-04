@@ -1,5 +1,6 @@
 use crate::{convert, Config, Dimension, Matrix3, Point, RollPitchYaw, Trajectory, Variable};
 use anyhow::{anyhow, Error};
+use nalgebra::{MatrixMN, U14, U3};
 use std::path::Path;
 
 /// Reads in a vector of measurements from files.
@@ -65,7 +66,7 @@ pub struct Measurement<L: Lasish> {
 
 /// The total propagated uncertainty for a measurement.
 #[derive(Debug)]
-pub struct Uncertainty {
+pub struct Tpu {
     pub x: f64,
     pub y: f64,
     pub horizontal: f64,
@@ -574,9 +575,34 @@ impl<L: Lasish> Measurement<L> {
     /// ```
     /// # use leeward::Point;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let uncertainty = measurements[0].uncertainty(Point::new(0., 0., 1.)).unwrap();
+    /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
     /// ```
-    pub fn uncertainty(&self, _normal: Point) -> Result<Uncertainty, Error> {
+    pub fn tpu(&self, normal: Point) -> Result<Tpu, Error> {
+        let jacobian = self.jacobian();
+        let incidence_angle = self.incidence_angle(normal);
+        let covariance = jacobian.transpose() * self.uncertainty(incidence_angle) * jacobian;
+        let x = covariance[(0, 0)];
+        let y = covariance[(1, 1)];
+        let z = covariance[(2, 2)];
+        Ok(Tpu {
+            x,
+            y,
+            horizontal: (x.powi(2) + y.powi(2)).sqrt(),
+            vertical: z,
+            total: (x.powi(2) + y.powi(2) + z.powi(2)).sqrt(),
+            incidence_angle,
+        })
+    }
+
+    fn jacobian(&self) -> MatrixMN<f64, U14, U3> {
+        unimplemented!()
+    }
+
+    fn incidence_angle(&self, normal: Point) -> f64 {
+        unimplemented!()
+    }
+
+    fn uncertainty(&self, incidence_angle: f64) -> MatrixMN<f64, U14, U14> {
         unimplemented!()
     }
 }
@@ -642,6 +668,6 @@ mod tests {
     fn uncertainty() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let _uncertainty = measurements[0].uncertainty(Point::new(0., 0., 1.)).unwrap();
+        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
     }
 }

@@ -194,12 +194,12 @@ impl LeewardMeasurement {
         measurement: Measurement<LeewardPoint>,
         normal: LeewardNormal,
     ) -> Result<LeewardMeasurement, Error> {
-        let uncertainty = measurement.uncertainty(normal.into())?;
+        let tpu = measurement.tpu(normal.into())?;
         Ok(LeewardMeasurement {
-            horizontal_uncertainty: uncertainty.horizontal,
-            vertical_uncertainty: uncertainty.vertical,
-            total_uncertainty: uncertainty.total,
-            incidence_angle: uncertainty.incidence_angle,
+            horizontal_uncertainty: tpu.horizontal,
+            vertical_uncertainty: tpu.vertical,
+            total_uncertainty: tpu.total,
+            incidence_angle: tpu.incidence_angle,
         })
     }
 }
