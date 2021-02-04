@@ -572,8 +572,9 @@ impl<L: Lasish> Measurement<L> {
     /// # Examples
     ///
     /// ```
+    /// # use leeward::Point;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let uncertainty = measurements[0].uncertainty().unwrap();
+    /// let uncertainty = measurements[0].uncertainty(Point::new(0., 0., 1.)).unwrap();
     /// ```
     pub fn uncertainty(&self, _normal: Point) -> Result<Uncertainty, Error> {
         unimplemented!()
