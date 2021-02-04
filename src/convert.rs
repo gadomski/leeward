@@ -1,6 +1,6 @@
 //! Utilities for coordinate conversion.
 
-use crate::{Matrix, Point, RollPitchYaw};
+use crate::{Matrix3, Point, RollPitchYaw};
 
 pub const WGS_84: Ellipsoid = Ellipsoid {
     a: 6378137.,
@@ -138,10 +138,10 @@ impl Ellipsoid {
     }
 }
 
-fn ecef_to_navigation_matrix(point: Point) -> Matrix {
+fn ecef_to_navigation_matrix(point: Point) -> Matrix3 {
     let latitude = point.y;
     let longitude = point.x;
-    Matrix::new(
+    Matrix3::new(
         -latitude.sin() * longitude.cos(),
         -latitude.sin() * longitude.sin(),
         latitude.cos(),

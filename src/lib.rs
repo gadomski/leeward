@@ -1,8 +1,7 @@
 //! Lidar Equation Engine With Already Racked Derivatives.
 //!
-//! Here's some fun stuff you can do:
 //!
-//! - Use the trajectory to transform the point cloud into the body frame of the platform:
+//! # Body frame
 //!
 //! ```
 //! use leeward::Point;
@@ -12,6 +11,18 @@
 //!     "data/config.toml",
 //! ).unwrap();
 //! let body_frame_coordinates: Vec<Point> = measurements.iter().map(|m| m.body_frame()).collect();
+//! ```
+//!
+//! # TPU
+//!
+//! ```
+//! use leeward::{Point, Matrix3};
+//! let measurements = leeward::measurements(
+//!     "data/sbet.out",
+//!     "data/points.las",
+//!     "data/config.toml",
+//! ).unwrap();
+//! let tpu: Vec<Matrix3> = measurements.iter().map(|m| m.tpu()).collect();
 //! ```
 
 pub mod adjust;
@@ -31,7 +42,7 @@ pub use trajectory::Trajectory;
 /// A nalgebra vector3 for f64s.
 pub type Point = nalgebra::Vector3<f64>;
 /// A nalgebra matrix3 for f64s.
-pub type Matrix = nalgebra::Matrix3<f64>;
+pub type Matrix3 = nalgebra::Matrix3<f64>;
 
 /// The three dimensions.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -144,14 +155,14 @@ impl RollPitchYaw {
     /// assert_eq!(matrix[(1, 1)], 1.);
     /// assert_eq!(matrix[(2, 2)], 1.);
     /// ```
-    pub fn as_matrix(&self) -> Matrix {
+    pub fn as_matrix(&self) -> Matrix3 {
         let cy = self.yaw.cos();
         let sy = self.yaw.sin();
         let cp = self.pitch.cos();
         let sp = self.pitch.sin();
         let cr = self.roll.cos();
         let sr = self.roll.sin();
-        Matrix::new(
+        Matrix3::new(
             cy * cp,
             cy * sp * sr - sy * cr,
             cy * sp * cr + sy * sr,

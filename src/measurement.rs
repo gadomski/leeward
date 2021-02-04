@@ -1,4 +1,4 @@
-use crate::{convert, Config, Dimension, Matrix, Point, RollPitchYaw, Trajectory, Variable};
+use crate::{convert, Config, Dimension, Matrix3, Point, RollPitchYaw, Trajectory, Variable};
 use anyhow::{anyhow, Error};
 use std::path::Path;
 
@@ -363,7 +363,7 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let boresight = measurements[0].boresight();
     /// ```
-    pub fn boresight(&self) -> Matrix {
+    pub fn boresight(&self) -> Matrix3 {
         RollPitchYaw::new(
             self.config.boresight.roll,
             self.config.boresight.pitch,

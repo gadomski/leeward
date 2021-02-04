@@ -1,6 +1,6 @@
 //! Utility functions.
 
-use crate::{Lasish, Matrix, Measurement, Point};
+use crate::{Lasish, Matrix3, Measurement, Point};
 use nalgebra::{Dynamic, MatrixMN, U3};
 
 /// Fits a bunch of measurements to a plane in the platform's body frame.
@@ -30,7 +30,7 @@ pub fn fit_to_plane_in_body_frame<L: Lasish>(measurements: &[Measurement<L>]) ->
     let svd = points.transpose().svd(true, false);
     let u = svd.u.unwrap();
     let angle_to_x_axis = u.column(0).dot(&Point::new(1., 0., 0.)).acos();
-    let rotation_to_zy_plane = Matrix::new(
+    let rotation_to_zy_plane = Matrix3::new(
         angle_to_x_axis.cos(),
         -angle_to_x_axis.sin(),
         0.,
