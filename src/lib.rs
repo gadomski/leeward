@@ -122,6 +122,47 @@ pub enum Variable {
     GnssZ,
 }
 
+#[derive(Debug)]
+pub struct VariableIter {
+    variables: [Variable; 14],
+    index: usize,
+}
+
+impl Variable {
+    pub fn iter() -> VariableIter {
+        VariableIter {
+            variables: [
+                Variable::Range,
+                Variable::ScanAngle,
+                Variable::BoresightRoll,
+                Variable::BoresightPitch,
+                Variable::BoresightYaw,
+                Variable::LeverArmX,
+                Variable::LeverArmY,
+                Variable::LeverArmZ,
+                Variable::Roll,
+                Variable::Pitch,
+                Variable::Yaw,
+                Variable::GnssX,
+                Variable::GnssY,
+                Variable::GnssZ,
+            ],
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for VariableIter {
+    type Item = Variable;
+    fn next(&mut self) -> Option<Variable> {
+        let variable = self.variables.get(self.index);
+        if variable.is_some() {
+            self.index += 1;
+        }
+        variable.map(|v| *v)
+    }
+}
+
 /// Roll, pitch, and yaw.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct RollPitchYaw {

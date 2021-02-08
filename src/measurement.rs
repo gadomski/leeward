@@ -575,10 +575,10 @@ impl<L: Lasish> Measurement<L> {
     /// ```
     /// # use leeward::Point;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
+    /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.), false).unwrap();
     /// ```
-    pub fn tpu(&self, normal: Point) -> Result<Tpu, Error> {
-        let jacobian = self.jacobian();
+    pub fn tpu(&self, normal: Point, lidar: bool) -> Result<Tpu, Error> {
+        let jacobian = self.jacobian(lidar);
         let incidence_angle = self.incidence_angle(normal);
         let covariance = jacobian.transpose() * self.uncertainty(incidence_angle) * jacobian;
         let x = covariance[(0, 0)];
@@ -594,7 +594,59 @@ impl<L: Lasish> Measurement<L> {
         })
     }
 
-    fn jacobian(&self) -> MatrixMN<f64, U14, U3> {
+    fn jacobian(&self, lidar: bool) -> MatrixMN<f64, U14, U3> {
+        let mut jacobian = MatrixMN::<f64, U14, U3>::zeros();
+        for (row, variable) in Variable::iter().enumerate() {
+            for (col, dimension) in Dimension::iter().enumerate() {
+                jacobian[(row, col)] = self.partial_derivative(variable, dimension, lidar);
+            }
+        }
+        jacobian
+    }
+
+    fn partial_derivative(&self, variable: Variable, dimension: Dimension, lidar: bool) -> f64 {
+        let cr = self.roll().cos();
+        let sr = self.roll().sin();
+        let cp = self.pitch().cos();
+        let sp = self.pitch().sin();
+        let cy = self.yaw().cos();
+        let sy = self.yaw().sin();
+        let ca = self.scan_angle(lidar).cos();
+        let sa = self.scan_angle(lidar).sin();
+        match variable {
+            Variable::GnssX => match dimension {
+                Dimension::X => 1.,
+                Dimension::Y => 0.,
+                Dimension::Z => 0.,
+            },
+            Variable::GnssY => match dimension {
+                Dimension::X => 0.,
+                Dimension::Y => 1.,
+                Dimension::Z => 0.,
+            },
+            Variable::GnssZ => match dimension {
+                Dimension::X => 0.,
+                Dimension::Y => 0.,
+                Dimension::Z => 1.,
+            },
+            Variable::Roll => match dimension {
+                Dimension::X => {
+                    (cr * sy - cy * sp * sr) * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                        + (cr * cy * sp + sr * sy)
+                            * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
+                }
+                Dimension::Y => {
+                    (-cr * cy - sp * sr * sy) * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                        + (cr * sp * sy - cy * sr)
+                            * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
+                }
+                Dimension::Z => {
+                    cp * cr * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
+                        - cp * sr * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                }
+            },
+            _ => unimplemented!(),
+        }
         unimplemented!()
     }
 
