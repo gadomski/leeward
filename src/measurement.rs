@@ -611,8 +611,18 @@ impl<L: Lasish> Measurement<L> {
         let sp = self.pitch().sin();
         let cy = self.yaw().cos();
         let sy = self.yaw().sin();
+        let cbr = self.boresight_roll().cos();
+        let sbr = self.boresight_roll().sin();
+        let cbp = self.boresight_pitch().cos();
+        let sbp = self.boresight_pitch().sin();
+        let cby = self.boresight_yaw().cos();
+        let sby = self.boresight_yaw().sin();
+        let lx = self.lever_arm_x();
+        let ly = self.lever_arm_y();
+        let lz = self.lever_arm_z();
         let ca = self.scan_angle(lidar).cos();
         let sa = self.scan_angle(lidar).sin();
+        let r = self.range();
         match variable {
             Variable::GnssX => match dimension {
                 Dimension::X => 1.,
@@ -631,23 +641,165 @@ impl<L: Lasish> Measurement<L> {
             },
             Variable::Roll => match dimension {
                 Dimension::X => {
-                    (cr * sy - cy * sp * sr) * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                    (cr * sy - cy * sp * sr) * (-ca * r * sbp + cbp * cbr * r * sa - lz)
                         + (cr * cy * sp + sr * sy)
-                            * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
                 }
                 Dimension::Y => {
-                    (-cr * cy - sp * sr * sy) * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                    (-cr * cy - sp * sr * sy) * (-ca * r * sbp + cbp * cbr * r * sa - lz)
                         + (cr * sp * sy - cy * sr)
-                            * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
                 }
                 Dimension::Z => {
-                    cp * cr * (ca * cbp * r * sby - l_y + r * sa * (cbr * sbp * sby - cby * sbr))
-                        - cp * sr * (-ca * r * sbp + cbp * cbr * r * sa - l_z)
+                    cp * cr * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                        - cp * sr * (-ca * r * sbp + cbp * cbr * r * sa - lz)
                 }
             },
-            _ => unimplemented!(),
+            Variable::Pitch => match dimension {
+                Dimension::X => {
+                    cp * cr * cy * (-ca * r * sbp + cbp * cbr * r * sa - lz)
+                        + cp * cy
+                            * sr
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                        - cy * sp
+                            * (ca * cbp * cby * r - lx + r * sa * (cbr * cby * sbp + sbr * sby))
+                }
+                Dimension::Y => {
+                    cp * cr * sy * (-ca * r * sbp + cbp * cbr * r * sa - lz)
+                        + cp * sr
+                            * sy
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                        - sp * sy
+                            * (ca * cbp * cby * r - lx + r * sa * (cbr * cby * sbp + sbr * sby))
+                }
+                Dimension::Z => {
+                    -cp * (ca * cbp * cby * r - lx + r * sa * (cbr * cby * sbp + sbr * sby))
+                        - cr * sp * (-ca * r * sbp + cbp * cbr * r * sa - lz)
+                        - sp * sr
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                }
+            },
+            Variable::Yaw => match dimension {
+                Dimension::X => {
+                    -cp * sy * (ca * cbp * cby * r - lx + r * sa * (cbr * cby * sbp + sbr * sby))
+                        + (-cr * cy - sp * sr * sy)
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                        + (-cr * sp * sy + cy * sr) * (-ca * r * sbp + cbp * cbr * r * sa - lz)
+                }
+                Dimension::Y => {
+                    cp * cy * (ca * cbp * cby * r - lx + r * sa * (cbr * cby * sbp + sbr * sby))
+                        + (-cr * sy + cy * sp * sr)
+                            * (ca * cbp * r * sby - ly + r * sa * (cbr * sbp * sby - cby * sbr))
+                        + (cr * cy * sp + sr * sy) * (-ca * r * sbp + cbp * cbr * r * sa - lz)
+                }
+                Dimension::Z => 0.,
+            },
+            Variable::BoresightRoll => match dimension {
+                Dimension::X => {
+                    -cbp * r * sa * sbr * (cr * cy * sp + sr * sy)
+                        + cp * cy * r * sa * (cbr * sby - cby * sbp * sbr)
+                        + r * sa * (-cbr * cby - sbp * sbr * sby) * (-cr * sy + cy * sp * sr)
+                }
+                Dimension::Y => {
+                    -cbp * r * sa * sbr * (cr * sp * sy - cy * sr)
+                        + cp * r * sa * sy * (cbr * sby - cby * sbp * sbr)
+                        + r * sa * (-cbr * cby - sbp * sbr * sby) * (cr * cy + sp * sr * sy)
+                }
+                Dimension::Z => {
+                    -cbp * cp * cr * r * sa * sbr
+                        + cp * r * sa * sr * (-cbr * cby - sbp * sbr * sby)
+                        - r * sa * sp * (cbr * sby - cby * sbp * sbr)
+                }
+            },
+            Variable::BoresightPitch => match dimension {
+                Dimension::X => {
+                    cp * cy * (-ca * cby * r * sbp + cbp * cbr * cby * r * sa)
+                        + (-cr * sy + cy * sp * sr)
+                            * (-ca * r * sbp * sby + cbp * cbr * r * sa * sby)
+                        + (-ca * cbp * r - cbr * r * sa * sbp) * (cr * cy * sp + sr * sy)
+                }
+                Dimension::Y => {
+                    cp * sy * (-ca * cby * r * sbp + cbp * cbr * cby * r * sa)
+                        + (cr * cy + sp * sr * sy)
+                            * (-ca * r * sbp * sby + cbp * cbr * r * sa * sby)
+                        + (-ca * cbp * r - cbr * r * sa * sbp) * (cr * sp * sy - cy * sr)
+                }
+                Dimension::Z => {
+                    cp * cr * (-ca * cbp * r - cbr * r * sa * sbp)
+                        + cp * sr * (-ca * r * sbp * sby + cbp * cbr * r * sa * sby)
+                        - sp * (-ca * cby * r * sbp + cbp * cbr * cby * r * sa)
+                }
+            },
+            Variable::BoresightYaw => match dimension {
+                Dimension::X => {
+                    cp * cy * (-ca * cbp * r * sby + r * sa * (-cbr * sbp * sby + cby * sbr))
+                        + (-cr * sy + cy * sp * sr)
+                            * (ca * cbp * cby * r + r * sa * (cbr * cby * sbp + sbr * sby))
+                }
+                Dimension::Y => {
+                    cp * sy * (-ca * cbp * r * sby + r * sa * (-cbr * sbp * sby + cby * sbr))
+                        + (cr * cy + sp * sr * sy)
+                            * (ca * cbp * cby * r + r * sa * (cbr * cby * sbp + sbr * sby))
+                }
+                Dimension::Z => {
+                    cp * sr * (ca * cbp * cby * r + r * sa * (cbr * cby * sbp + sbr * sby))
+                        - sp * (-ca * cbp * r * sby + r * sa * (-cbr * sbp * sby + cby * sbr))
+                }
+            },
+            Variable::Range => match dimension {
+                Dimension::X => {
+                    cp * cy * (ca * cbp * cby + sa * (cbr * cby * sbp + sbr * sby))
+                        + (-ca * sbp + cbp * cbr * sa) * (cr * cy * sp + sr * sy)
+                        + (-cr * sy + cy * sp * sr)
+                            * (ca * cbp * sby + sa * (cbr * sbp * sby - cby * sbr))
+                }
+                Dimension::Y => {
+                    cp * sy * (ca * cbp * cby + sa * (cbr * cby * sbp + sbr * sby))
+                        + (-ca * sbp + cbp * cbr * sa) * (cr * sp * sy - cy * sr)
+                        + (cr * cy + sp * sr * sy)
+                            * (ca * cbp * sby + sa * (cbr * sbp * sby - cby * sbr))
+                }
+                Dimension::Z => {
+                    cp * cr * (-ca * sbp + cbp * cbr * sa)
+                        + cp * sr * (ca * cbp * sby + sa * (cbr * sbp * sby - cby * sbr))
+                        - sp * (ca * cbp * cby + sa * (cbr * cby * sbp + sbr * sby))
+                }
+            },
+            Variable::ScanAngle => match dimension {
+                Dimension::X => {
+                    cp * cy * (ca * r * (cbr * cby * sbp + sbr * sby) - cbp * cby * r * sa)
+                        + (-cr * sy + cy * sp * sr)
+                            * (ca * r * (cbr * sbp * sby - cby * sbr) - cbp * r * sa * sby)
+                        + (cr * cy * sp + sr * sy) * (ca * cbp * cbr * r + r * sa * sbp)
+                }
+                Dimension::Y => {
+                    cp * sy * (ca * r * (cbr * cby * sbp + sbr * sby) - cbp * cby * r * sa)
+                        + (cr * cy + sp * sr * sy)
+                            * (ca * r * (cbr * sbp * sby - cby * sbr) - cbp * r * sa * sby)
+                        + (cr * sp * sy - cy * sr) * (ca * cbp * cbr * r + r * sa * sbp)
+                }
+                Dimension::Z => {
+                    cp * cr * (ca * cbp * cbr * r + r * sa * sbp)
+                        + cp * sr * (ca * r * (cbr * sbp * sby - cby * sbr) - cbp * r * sa * sby)
+                        - sp * (ca * r * (cbr * cby * sbp + sbr * sby) - cbp * cby * r * sa)
+                }
+            },
+            Variable::LeverArmX => match dimension {
+                Dimension::X => -cp * cy,
+                Dimension::Y => -cp * sy,
+                Dimension::Z => sp,
+            },
+            Variable::LeverArmY => match dimension {
+                Dimension::X => cr * sy - cy * sp * sr,
+                Dimension::Y => -cr * cy - sp * sr * sy,
+                Dimension::Z => -cp * sr,
+            },
+            Variable::LeverArmZ => match dimension {
+                Dimension::X => -cr * cy * sp - sr * sy,
+                Dimension::Y => -cr * sp * sy + cy * sr,
+                Dimension::Z => -cp * cr,
+            },
         }
-        unimplemented!()
     }
 
     fn incidence_angle(&self, normal: Point) -> f64 {
@@ -720,6 +872,6 @@ mod tests {
     fn uncertainty() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
+        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.), false).unwrap();
     }
 }
