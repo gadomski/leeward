@@ -299,13 +299,19 @@ impl<L: Lasish> Measurement<L> {
     /// ```
     pub fn body_frame(&self) -> Point {
         let projected = self.las.point();
-        let platform = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
-        convert::projected_to_body(
-            projected,
-            platform,
-            RollPitchYaw::new(self.sbet.roll, self.sbet.pitch, self.sbet.yaw),
-            self.config.utm_zone,
-        )
+        convert::projected_to_body(projected, self.platform(), self.rpy(), self.utm_zone())
+    }
+
+    fn platform(&self) -> Point {
+        Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude)
+    }
+
+    fn rpy(&self) -> RollPitchYaw {
+        RollPitchYaw::new(self.sbet.roll, self.sbet.pitch, self.sbet.yaw)
+    }
+
+    fn utm_zone(&self) -> u8 {
+        self.config.utm_zone
     }
 
     /// Calculates body frame coordinates using the lidar equation and this measurement's configuration.
@@ -823,10 +829,19 @@ impl<L: Lasish> Measurement<L> {
     }
 
     fn incidence_angle(&self, normal: Point) -> f64 {
-        unimplemented!()
+        let projected_normal_endpoint = self.las.point() + normal;
+        let body_normal_endpoint = convert::projected_to_body(
+            projected_normal_endpoint,
+            self.platform(),
+            self.rpy(),
+            self.utm_zone(),
+        );
+        let vector = body_normal_endpoint - self.body_frame();
+        let unit_vector = vector / vector.norm();
+        (unit_vector.dot(&normal) / (unit_vector.norm() * normal.norm())).acos()
     }
 
-    fn uncertainty(&self, incidence_angle: f64) -> MatrixMN<f64, U14, U14> {
+    fn uncertainty(&self, _incidence_angle: f64) -> MatrixMN<f64, U14, U14> {
         unimplemented!()
     }
 }
@@ -902,6 +917,15 @@ mod tests {
     fn uncertainty() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
+        let _uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
+    }
+
+    #[test]
+    fn incidence_angle() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let incidence_angle = measurements[0].incidence_angle(Point::new(0., 0., 1.));
+        assert!(incidence_angle < 90f64.to_degrees());
+        assert!(incidence_angle > 0f64.to_degrees());
     }
 }
