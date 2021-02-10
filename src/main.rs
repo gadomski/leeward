@@ -85,8 +85,12 @@ struct Record {
 impl BodyFrame {
     fn new<L: Lasish>(measurement: &Measurement<L>) -> Result<BodyFrame, Error> {
         let body_frame = measurement.body_frame();
-        let modeled_body_frame_computed = measurement.modeled_body_frame(false);
-        let modeled_body_frame_lidar = measurement.modeled_body_frame(true);
+        let modeled_body_frame_computed = measurement.modeled_body_frame();
+        let scan_angle_computed = measurement.scan_angle();
+        let mut measurement = measurement.clone();
+        measurement.use_las_scan_angle(true);
+        let modeled_body_frame_las = measurement.modeled_body_frame();
+        let scan_angle_las = measurement.scan_angle();
         Ok(BodyFrame {
             time: measurement.time(),
             x: measurement.x(),
@@ -101,12 +105,12 @@ impl BodyFrame {
             body_frame_config_computed_x: modeled_body_frame_computed.x,
             body_frame_config_computed_y: modeled_body_frame_computed.y,
             body_frame_config_computed_z: modeled_body_frame_computed.z,
-            body_frame_config_las_x: modeled_body_frame_lidar.x,
-            body_frame_config_las_y: modeled_body_frame_lidar.y,
-            body_frame_config_las_z: modeled_body_frame_lidar.z,
+            body_frame_config_las_x: modeled_body_frame_las.x,
+            body_frame_config_las_y: modeled_body_frame_las.y,
+            body_frame_config_las_z: modeled_body_frame_las.z,
             range: measurement.range(),
-            scan_angle_computed: measurement.scan_angle(false),
-            scan_angle_las: measurement.scan_angle(true),
+            scan_angle_computed,
+            scan_angle_las,
         })
     }
 }

@@ -40,7 +40,6 @@ use anyhow::{anyhow, Error};
 use nalgebra::{DMatrix, DVector};
 
 const DEFAULT_TOLERANCE: f64 = 1e-6;
-const DEFAULT_LAS_SCAN_ANGLE: bool = false;
 const BORESIGHT_VARIABLES: [Variable; 3] = [
     Variable::BoresightRoll,
     Variable::BoresightPitch,
@@ -62,7 +61,6 @@ pub struct Adjust<L: Lasish> {
     variables: Vec<Variable>,
     config: Config,
     history: Vec<Record>,
-    las_scan_angle: bool,
 }
 
 /// A record of a single iteration.
@@ -72,7 +70,6 @@ pub struct Record {
     pub variables: Vec<Variable>,
     pub values: Vec<f64>,
     pub config: Config,
-    pub las_scan_angle: bool,
 }
 
 impl<L: Lasish> Adjust<L> {
@@ -86,12 +83,7 @@ impl<L: Lasish> Adjust<L> {
     /// let adjust = Adjust::new(measurements).unwrap();
     /// ```
     pub fn new(measurements: Vec<Measurement<L>>) -> Result<Adjust<L>, Error> {
-        Adjust::new_iteration(
-            measurements,
-            BORESIGHT_VARIABLES.to_vec(),
-            vec![],
-            DEFAULT_LAS_SCAN_ANGLE,
-        )
+        Adjust::new_iteration(measurements, BORESIGHT_VARIABLES.to_vec(), vec![])
     }
 
     /// Switch this adjust to adjust the lever arm.
@@ -118,7 +110,6 @@ impl<L: Lasish> Adjust<L> {
         measurements: Vec<Measurement<L>>,
         variables: Vec<Variable>,
         mut history: Vec<Record>,
-        las_scan_angle: bool,
     ) -> Result<Adjust<L>, Error> {
         if measurements.is_empty() {
             return Err(anyhow!("cannot create adjust with no measurements"));
@@ -129,7 +120,7 @@ impl<L: Lasish> Adjust<L> {
             if measurement.config() != config {
                 return Err(anyhow!("not all measurements have the same config"));
             }
-            let rs = measurement.residuals(las_scan_angle);
+            let rs = measurement.residuals();
             for (j, &residual) in rs.iter().enumerate() {
                 residuals[i * 3 + j] = residual;
             }
@@ -141,7 +132,6 @@ impl<L: Lasish> Adjust<L> {
             variables: variables.clone(),
             values: values.iter().map(|&v| v).collect(),
             config,
-            las_scan_angle,
         });
         Ok(Adjust {
             rmse,
@@ -151,7 +141,6 @@ impl<L: Lasish> Adjust<L> {
             tolerance: DEFAULT_TOLERANCE,
             history,
             config,
-            las_scan_angle,
         })
     }
 
@@ -224,11 +213,8 @@ impl<L: Lasish> Adjust<L> {
         for (i, measurement) in self.measurements.iter().enumerate() {
             for (j, dimension) in Dimension::iter().enumerate() {
                 for (k, &variable) in self.variables.iter().enumerate() {
-                    jacobian[(i * 3 + j, k)] = measurement.partial_derivative_in_body_frame(
-                        dimension,
-                        variable,
-                        self.las_scan_angle,
-                    );
+                    jacobian[(i * 3 + j, k)] =
+                        measurement.partial_derivative_in_body_frame(dimension, variable);
                 }
             }
         }
@@ -246,12 +232,7 @@ impl<L: Lasish> Adjust<L> {
             .iter()
             .map(|m| m.with_config(config))
             .collect();
-        Adjust::new_iteration(
-            measurements,
-            self.variables.clone(),
-            self.history.clone(),
-            self.las_scan_angle,
-        )
+        Adjust::new_iteration(measurements, self.variables.clone(), self.history.clone())
     }
 }
 

@@ -57,11 +57,12 @@ pub fn decimated_measurements<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>
 }
 
 /// A measurement combines trajectory information with the lidar point.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Measurement<L: Lasish> {
-    lidar: L,
+    las: L,
     sbet: sbet::Point,
     config: Config,
+    use_las_scan_angle: bool,
 }
 
 /// The total propagated uncertainty for a measurement.
@@ -119,16 +120,35 @@ impl<L: Lasish> Measurement<L> {
     ///     .unwrap();
     /// let measurement = Measurement::new(&trajectory, point, config).unwrap();
     /// ```
-    pub fn new(trajectory: &Trajectory, lidar: L, config: Config) -> Result<Measurement<L>, Error> {
-        let time = lidar.time().ok_or(anyhow!("missing time on point"))?;
+    pub fn new(
+        trajectory: &Trajectory,
+        lasish: L,
+        config: Config,
+    ) -> Result<Measurement<L>, Error> {
+        let time = lasish.time().ok_or(anyhow!("missing time on point"))?;
         let sbet = trajectory
             .get(time)
             .ok_or(anyhow!("could not find sbet point for time: {}", time))?;
         Ok(Measurement {
-            lidar,
+            las: lasish,
             sbet: *sbet,
             config,
+            use_las_scan_angle: false,
         })
+    }
+
+    /// Sets whether this measurement uses the scan angle from the las point, or calculates it itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml");
+    /// let mut measurement = measurements[0].clone();
+    /// measurement.use_las_scan_angle(true);
+    /// assert_eq!(measurement.scan_angle(), measurement.scan_angle().round()));
+    /// ```
+    pub fn use_las_scan_angle(&mut self, use_las_scan_angle: bool) {
+        self.use_las_scan_angle = use_las_scan_angle;
     }
 
     /// Returns the x coordinate of this measurement, from the lidar point.
@@ -150,7 +170,7 @@ impl<L: Lasish> Measurement<L> {
     /// assert_eq!(point.x, measurement.x());
     /// ```
     pub fn x(&self) -> f64 {
-        self.lidar.x()
+        self.las.x()
     }
 
     /// Returns the y coordinate of this measurement, from the las point.
@@ -172,7 +192,7 @@ impl<L: Lasish> Measurement<L> {
     /// assert_eq!(point.y, measurement.y());
     /// ```
     pub fn y(&self) -> f64 {
-        self.lidar.y()
+        self.las.y()
     }
 
     /// Returns the z coordinate of this measurement, from the las point.
@@ -194,7 +214,7 @@ impl<L: Lasish> Measurement<L> {
     /// assert_eq!(point.z, measurement.z());
     /// ```
     pub fn z(&self) -> f64 {
-        self.lidar.z()
+        self.las.z()
     }
 
     /// Returns the roll of this measurement, from the sbet.
@@ -254,7 +274,7 @@ impl<L: Lasish> Measurement<L> {
     /// assert_eq!(point.gps_time.unwrap(), measurement.time());
     /// ```
     pub fn time(&self) -> f64 {
-        self.lidar
+        self.las
             .time()
             .expect("time should be something because we check when creating the measurement")
     }
@@ -278,7 +298,7 @@ impl<L: Lasish> Measurement<L> {
     /// let body_frame = measurement.body_frame();
     /// ```
     pub fn body_frame(&self) -> Point {
-        let projected = self.lidar.point();
+        let projected = self.las.point();
         let platform = Point::new(self.sbet.longitude, self.sbet.latitude, self.sbet.altitude);
         convert::projected_to_body(
             projected,
@@ -298,8 +318,8 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let body_frame = measurements[0].modeled_body_frame(false);
     /// ```
-    pub fn modeled_body_frame(&self, lidar_scan_angle: bool) -> Point {
-        self.boresight() * self.modeled_scan_frame(lidar_scan_angle) - self.lever_arm()
+    pub fn modeled_body_frame(&self) -> Point {
+        self.boresight() * self.modeled_scan_frame() - self.lever_arm()
     }
 
     /// Returns this measurement's point in the scanner reference frame.
@@ -310,11 +330,11 @@ impl<L: Lasish> Measurement<L> {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scanner = measurements[0].scan_frame_from_model(false);
+    /// let scanner = measurements[0].scan_frame_from_model();
     /// ```
-    pub fn modeled_scan_frame(&self, lidar_scan_angle: bool) -> Point {
+    pub fn modeled_scan_frame(&self) -> Point {
         let range = self.range();
-        let scan_angle = self.scan_angle(lidar_scan_angle);
+        let scan_angle = self.scan_angle();
         Point::new(range * scan_angle.cos(), 0., range * scan_angle.sin())
     }
 
@@ -344,9 +364,9 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let scan_angle = measurements[0].scan_angle(false);
     /// ```
-    pub fn scan_angle(&self, lidar: bool) -> f64 {
-        if lidar {
-            self.lidar.scan_angle().to_radians()
+    pub fn scan_angle(&self) -> f64 {
+        if self.use_las_scan_angle {
+            self.las.scan_angle().to_radians()
         } else {
             let body_frame = self.body_frame();
             body_frame.y.signum()
@@ -400,10 +420,9 @@ impl<L: Lasish> Measurement<L> {
         &self,
         dimension: Dimension,
         variable: Variable,
-        lidar_scan_angle: bool,
     ) -> f64 {
         let range = self.range();
-        let scan_angle = self.scan_angle(lidar_scan_angle);
+        let scan_angle = self.scan_angle();
         let sa = scan_angle.sin();
         let ca = scan_angle.cos();
         let sr = self.config.boresight.roll.sin();
@@ -546,9 +565,10 @@ impl<L: Lasish> Measurement<L> {
     /// ```
     pub fn with_config(&self, config: Config) -> Measurement<L> {
         Measurement {
-            lidar: self.lidar.clone(),
+            las: self.las.clone(),
             sbet: self.sbet,
             config: config,
+            use_las_scan_angle: self.use_las_scan_angle,
         }
     }
 
@@ -564,8 +584,8 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let residuals = measurements[0].residuals(false);
     /// ```
-    pub fn residuals(&self, lidar_scan_angle: bool) -> Point {
-        self.modeled_body_frame(lidar_scan_angle) - self.body_frame()
+    pub fn residuals(&self) -> Point {
+        self.modeled_body_frame() - self.body_frame()
     }
 
     /// Returns this measurement's total propagated uncertainty.
@@ -577,8 +597,8 @@ impl<L: Lasish> Measurement<L> {
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.), false).unwrap();
     /// ```
-    pub fn tpu(&self, normal: Point, lidar: bool) -> Result<Tpu, Error> {
-        let jacobian = self.jacobian(lidar);
+    pub fn tpu(&self, normal: Point) -> Result<Tpu, Error> {
+        let jacobian = self.jacobian();
         let incidence_angle = self.incidence_angle(normal);
         let covariance = jacobian.transpose() * self.uncertainty(incidence_angle) * jacobian;
         let x = covariance[(0, 0)];
@@ -594,17 +614,17 @@ impl<L: Lasish> Measurement<L> {
         })
     }
 
-    fn jacobian(&self, lidar: bool) -> MatrixMN<f64, U14, U3> {
+    fn jacobian(&self) -> MatrixMN<f64, U14, U3> {
         let mut jacobian = MatrixMN::<f64, U14, U3>::zeros();
         for (row, variable) in Variable::iter().enumerate() {
             for (col, dimension) in Dimension::iter().enumerate() {
-                jacobian[(row, col)] = self.partial_derivative(variable, dimension, lidar);
+                jacobian[(row, col)] = self.partial_derivative(variable, dimension);
             }
         }
         jacobian
     }
 
-    fn partial_derivative(&self, variable: Variable, dimension: Dimension, lidar: bool) -> f64 {
+    fn partial_derivative(&self, variable: Variable, dimension: Dimension) -> f64 {
         let cr = self.roll().cos();
         let sr = self.roll().sin();
         let cp = self.pitch().cos();
@@ -620,8 +640,8 @@ impl<L: Lasish> Measurement<L> {
         let lx = self.lever_arm_x();
         let ly = self.lever_arm_y();
         let lz = self.lever_arm_z();
-        let ca = self.scan_angle(lidar).cos();
-        let sa = self.scan_angle(lidar).sin();
+        let ca = self.scan_angle().cos();
+        let sa = self.scan_angle().sin();
         let r = self.range();
         match variable {
             Variable::GnssX => match dimension {
@@ -869,9 +889,19 @@ mod tests {
     }
 
     #[test]
+    fn scan_angle() {
+        let measurements =
+            super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
+        let mut measurement = measurements[0].clone();
+        assert_relative_eq!(22.2f64.to_radians(), measurement.scan_angle());
+        measurement.use_las_scan_angle(true);
+        assert_eq!(22f64.to_radians(), measurement.scan_angle());
+    }
+
+    #[test]
     fn uncertainty() {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.), false).unwrap();
+        let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
     }
 }

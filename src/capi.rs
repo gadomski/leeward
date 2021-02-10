@@ -193,9 +193,8 @@ impl LeewardMeasurement {
     fn new(
         measurement: Measurement<LeewardPoint>,
         normal: LeewardNormal,
-        lidar: bool,
     ) -> Result<LeewardMeasurement, Error> {
-        let tpu = measurement.tpu(normal.into(), lidar)?;
+        let tpu = measurement.tpu(normal.into())?;
         Ok(LeewardMeasurement {
             horizontal_uncertainty: tpu.horizontal,
             vertical_uncertainty: tpu.vertical,
