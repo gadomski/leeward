@@ -893,7 +893,7 @@ mod tests {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let mut measurement = measurements[0].clone();
-        assert_relative_eq!(22.2f64.to_radians(), measurement.scan_angle());
+        assert_relative_eq!(0.402565395893292, measurement.scan_angle());
         measurement.use_las_scan_angle(true);
         assert_eq!(22f64.to_radians(), measurement.scan_angle());
     }
