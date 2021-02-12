@@ -53,7 +53,7 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 /// # Examples
 ///
 /// ```
-/// # use leeward::capi;
+/// # use leeward::{capi, Point};
 /// # use std::ffi::CString;
 /// let sbet = CString::new("data/sbet.out").unwrap();
 /// let config = CString::new("data/config.toml").unwrap();
@@ -65,7 +65,12 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 ///     scan_angle: 22.,
 ///     time: 400825.8057,
 /// };
-/// let measurement = capi::leeward_measurement(leeward, point);
+/// let normal = capi::LeewardNormal {
+///     x: 0.,
+///     y: 0.,
+///     z: 1.,
+/// };
+/// let measurement = capi::leeward_measurement(leeward, point, normal);
 /// assert!(!measurement.is_null());
 /// capi::leeward_measurement_free(measurement);
 /// capi::leeward_free(leeward);

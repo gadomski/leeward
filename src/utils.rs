@@ -12,7 +12,7 @@ use nalgebra::{Dynamic, MatrixMN, U3};
 /// ```
 /// # use leeward::utils;
 /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-/// let points = utils::fit_to_plane_in_body_frame(measurements);
+/// let points = utils::fit_to_plane_in_body_frame(&measurements);
 /// assert_eq!(measurements.len(), points.len());
 /// ```
 pub fn fit_to_plane_in_body_frame<L: Lasish>(measurements: &[Measurement<L>]) -> Vec<Point> {

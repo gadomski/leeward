@@ -22,7 +22,7 @@
 //!     "data/points.las",
 //!     "data/config.toml",
 //! ).unwrap();
-//! let tpu: Vec<Matrix3> = measurements.iter().map(|m| m.tpu()).collect();
+//! let tpu: Vec<_> = measurements.iter().map(|m| m.tpu(Point::new(0., 0., 1.)).unwrap()).collect();
 //! ```
 
 pub mod adjust;

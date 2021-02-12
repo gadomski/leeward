@@ -1,6 +1,6 @@
 use crate::{convert, Config, Dimension, Matrix3, Point, RollPitchYaw, Trajectory, Variable};
 use anyhow::{anyhow, Error};
-use nalgebra::{MatrixMN, U14, U3};
+use nalgebra::{MatrixMN, MatrixN, U14, U3};
 use std::path::Path;
 
 /// Reads in a vector of measurements from files.
@@ -142,10 +142,10 @@ impl<L: Lasish> Measurement<L> {
     /// # Examples
     ///
     /// ```
-    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml");
+    /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
     /// let mut measurement = measurements[0].clone();
     /// measurement.use_las_scan_angle(true);
-    /// assert_eq!(measurement.scan_angle(), measurement.scan_angle().round()));
+    /// assert_eq!(measurement.scan_angle().to_degrees(), measurement.scan_angle().to_degrees().round());
     /// ```
     pub fn use_las_scan_angle(&mut self, use_las_scan_angle: bool) {
         self.use_las_scan_angle = use_las_scan_angle;
@@ -316,13 +316,11 @@ impl<L: Lasish> Measurement<L> {
 
     /// Calculates body frame coordinates using the lidar equation and this measurement's configuration.
     ///
-    /// The argument specifies whether to use the las scan angle (true) or the computed one (false).
-    ///
     /// # Examples
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let body_frame = measurements[0].modeled_body_frame(false);
+    /// let body_frame = measurements[0].modeled_body_frame();
     /// ```
     pub fn modeled_body_frame(&self) -> Point {
         self.boresight() * self.modeled_scan_frame() - self.lever_arm()
@@ -336,7 +334,7 @@ impl<L: Lasish> Measurement<L> {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scanner = measurements[0].scan_frame_from_model();
+    /// let scanner = measurements[0].modeled_scan_frame();
     /// ```
     pub fn modeled_scan_frame(&self) -> Point {
         let range = self.range();
@@ -361,14 +359,11 @@ impl<L: Lasish> Measurement<L> {
 
     /// Returns this measurement's scan angle in radians.
     ///
-    /// If the argument is false, this value is taken from the las point in the body frame of the platform.
-    /// If true, the scan angle is from the las file (converted to radians).
-    ///
     /// # Examples
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let scan_angle = measurements[0].scan_angle(false);
+    /// let scan_angle = measurements[0].scan_angle();
     /// ```
     pub fn scan_angle(&self) -> f64 {
         if self.use_las_scan_angle {
@@ -413,14 +408,12 @@ impl<L: Lasish> Measurement<L> {
 
     /// Returns the partial derivative in the body frame for the given dimension and variable.
     ///
-    /// The last argument specifies whether to use the computed scan angle (false) or the las scan angle (true).
-    ///
     /// # Examples
     ///
     /// ```
     /// # use leeward::{Dimension, Variable};
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll, false);
+    /// let partial_derivative = measurements[0].partial_derivative_in_body_frame(Dimension::X, Variable::BoresightRoll);
     /// ```
     pub fn partial_derivative_in_body_frame(
         &self,
@@ -588,7 +581,7 @@ impl<L: Lasish> Measurement<L> {
     ///
     /// ```
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let residuals = measurements[0].residuals(false);
+    /// let residuals = measurements[0].residuals();
     /// ```
     pub fn residuals(&self) -> Point {
         self.modeled_body_frame() - self.body_frame()
@@ -601,12 +594,13 @@ impl<L: Lasish> Measurement<L> {
     /// ```
     /// # use leeward::Point;
     /// let measurements = leeward::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
-    /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.), false).unwrap();
+    /// let uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
     /// ```
     pub fn tpu(&self, normal: Point) -> Result<Tpu, Error> {
         let jacobian = self.jacobian();
         let incidence_angle = self.incidence_angle(normal);
-        let covariance = jacobian.transpose() * self.uncertainty(incidence_angle) * jacobian;
+        let covariance =
+            jacobian.transpose() * self.uncertainty_covariance(incidence_angle) * jacobian;
         let x = covariance[(0, 0)];
         let y = covariance[(1, 1)];
         let z = covariance[(2, 2)];
@@ -841,8 +835,37 @@ impl<L: Lasish> Measurement<L> {
         (unit_vector.dot(&normal) / (unit_vector.norm() * normal.norm())).acos()
     }
 
-    fn uncertainty(&self, _incidence_angle: f64) -> MatrixMN<f64, U14, U14> {
-        unimplemented!()
+    fn uncertainty_covariance(&self, incidence_angle: f64) -> MatrixN<f64, U14> {
+        let mut matrix = MatrixN::<f64, U14>::zeros();
+        for (i, variable) in Variable::iter().enumerate() {
+            matrix[(i, i)] = self.uncertainty(variable, incidence_angle);
+        }
+        matrix
+    }
+
+    fn uncertainty(&self, variable: Variable, incidence_angle: f64) -> f64 {
+        use Variable::*;
+        match variable {
+            GnssX => self.config.uncertainty.gnss_x,
+            GnssY => self.config.uncertainty.gnss_x,
+            GnssZ => self.config.uncertainty.gnss_x,
+            Roll => self.config.uncertainty.roll,
+            Pitch => self.config.uncertainty.pitch,
+            Yaw => self.config.uncertainty.yaw,
+            BoresightRoll => self.config.uncertainty.boresight_roll,
+            BoresightPitch => self.config.uncertainty.boresight_pitch,
+            BoresightYaw => self.config.uncertainty.boresight_yaw,
+            LeverArmX => self.config.uncertainty.lever_arm_x,
+            LeverArmY => self.config.uncertainty.lever_arm_y,
+            LeverArmZ => self.config.uncertainty.lever_arm_z,
+            Range => (self.config.uncertainty.range.powi(2)
+                + (self.range() * self.config.beam_divergence / 4.0 * incidence_angle.tan()))
+            .sqrt(),
+            ScanAngle => {
+                self.config.uncertainty.scan_angle.powi(2)
+                    + (self.config.beam_divergence / 4.0).powi(2)
+            }
+        }
     }
 }
 

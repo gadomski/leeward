@@ -8,8 +8,29 @@ use std::{fs::File, io::Read, path::Path};
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct Config {
     pub utm_zone: u8,
+    pub beam_divergence: f64,
     pub lever_arm: Point,
     pub boresight: RollPitchYaw,
+    pub uncertainty: Uncertainty,
+}
+
+/// Configuration for uncertainty config.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct Uncertainty {
+    pub gnss_x: f64,
+    pub gnss_y: f64,
+    pub gnss_z: f64,
+    pub roll: f64,
+    pub pitch: f64,
+    pub yaw: f64,
+    pub boresight_roll: f64,
+    pub boresight_pitch: f64,
+    pub boresight_yaw: f64,
+    pub lever_arm_x: f64,
+    pub lever_arm_y: f64,
+    pub lever_arm_z: f64,
+    pub range: f64,
+    pub scan_angle: f64,
 }
 
 impl Config {

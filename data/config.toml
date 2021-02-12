@@ -1,7 +1,24 @@
 utm_zone = 11
 lever_arm = [0, 0, 0]
+beam_divergence = 0.25
 
 [boresight]
 roll = -1.54
 pitch = -1.54
 yaw = 0
+
+[uncertainty]
+gnss_x = 0.05
+gnss_y = 0.05
+gnss_z = 0.1
+roll = 4.36332313e-5 # 0.0025°
+pitch = 4.36332313e-5 # 0.0025°
+yaw = 5.235988e-5 # 0.003°
+boresight_roll = 1.745329e-5 # 0.001°
+boresight_pitch = 1.745329e-5 # 0.001°
+boresight_yaw = 6.981317e-5 # 0.004°
+lever_arm_x = 0.02
+lever_arm_y = 0.02
+lever_arm_z = 0.02
+range = 0.02
+scan_angle = 1.745329e-5 # 0.001°
