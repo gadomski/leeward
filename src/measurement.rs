@@ -838,7 +838,7 @@ impl<L: Lasish> Measurement<L> {
     fn uncertainty_covariance(&self, incidence_angle: f64) -> MatrixN<f64, U14> {
         let mut matrix = MatrixN::<f64, U14>::zeros();
         for (i, variable) in Variable::iter().enumerate() {
-            matrix[(i, i)] = self.uncertainty(variable, incidence_angle);
+            matrix[(i, i)] = self.uncertainty(variable, incidence_angle).powi(2);
         }
         matrix
     }
