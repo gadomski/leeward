@@ -1,6 +1,6 @@
 utm_zone = 11
 lever_arm = [0, 0, 0]
-beam_divergence = 0.25
+beam_divergence = 0.25e-3
 
 [boresight]
 roll = -1.54

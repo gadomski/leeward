@@ -1,7 +1,7 @@
 use anyhow::Error;
 use clap::{load_yaml, App, AppSettings};
 use csv::Writer;
-use leeward::{utils, Adjust, Config, Lasish, Measurement};
+use leeward::{utils, Adjust, Config, Lasish, Measurement, Point};
 use serde::Serialize;
 use std::{
     fs::File,
@@ -48,6 +48,13 @@ fn main() -> Result<(), Error> {
         for point in utils::fit_to_plane_in_body_frame(&measurements) {
             writer.serialize(point)?;
         }
+    } else if let Some(_) = matches.subcommand_matches("tpu") {
+        let mut writer = Writer::from_writer(write);
+        for tpu in measurements.into_iter().map(Tpu::new) {
+            if let Ok(tpu) = tpu {
+                writer.serialize(tpu)?;
+            }
+        }
     }
     Ok(())
 }
@@ -80,6 +87,17 @@ struct Record {
     iteration: usize,
     rmse: f64,
     config: Config,
+}
+
+#[derive(Debug, Serialize)]
+struct Tpu {
+    x: f64,
+    y: f64,
+    z: f64,
+    horizontal: f64,
+    vertical: f64,
+    total: f64,
+    incidence_angle: f64,
 }
 
 impl BodyFrame {
@@ -122,5 +140,20 @@ impl Record {
             rmse: record.rmse,
             config: record.config,
         }
+    }
+}
+
+impl Tpu {
+    fn new<L: Lasish>(measurement: Measurement<L>) -> Result<Tpu, Error> {
+        let tpu = measurement.tpu(Point::new(0., 0., 1.))?;
+        Ok(Tpu {
+            x: measurement.x(),
+            y: measurement.y(),
+            z: measurement.z(),
+            horizontal: tpu.horizontal,
+            vertical: tpu.vertical,
+            total: tpu.total,
+            incidence_angle: tpu.incidence_angle,
+        })
     }
 }

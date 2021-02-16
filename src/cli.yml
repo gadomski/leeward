@@ -29,3 +29,5 @@ subcommands:
         about: Computes the points in the body frame of the aircraft
     - best-fit-plane:
         about: Computes the best fit plane for the points in the body frame of the platform
+    - tpu:
+        about: Computes total propagated uncertainty

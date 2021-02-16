@@ -830,7 +830,7 @@ impl<L: Lasish> Measurement<L> {
             self.rpy(),
             self.utm_zone(),
         );
-        let vector = body_normal_endpoint - self.body_frame();
+        let vector = self.body_frame() - body_normal_endpoint;
         let unit_vector = vector / vector.norm();
         (unit_vector.dot(&normal) / (unit_vector.norm() * normal.norm())).acos()
     }
@@ -948,7 +948,7 @@ mod tests {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let incidence_angle = measurements[0].incidence_angle(Point::new(0., 0., 1.));
-        assert!(incidence_angle < 90f64.to_degrees());
-        assert!(incidence_angle > 0f64.to_degrees());
+        assert!(incidence_angle < 90f64.to_radians());
+        assert!(incidence_angle > 0f64.to_radians());
     }
 }
