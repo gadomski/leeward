@@ -601,9 +601,9 @@ impl<L: Lasish> Measurement<L> {
         let incidence_angle = self.incidence_angle(normal);
         let covariance =
             jacobian.transpose() * self.uncertainty_covariance(incidence_angle) * jacobian;
-        let x = covariance[(0, 0)];
-        let y = covariance[(1, 1)];
-        let z = covariance[(2, 2)];
+        let x = covariance[(0, 0)].sqrt();
+        let y = covariance[(1, 1)].sqrt();
+        let z = covariance[(2, 2)].sqrt();
         Ok(Tpu {
             x,
             y,
@@ -847,8 +847,8 @@ impl<L: Lasish> Measurement<L> {
         use Variable::*;
         match variable {
             GnssX => self.config.uncertainty.gnss_x,
-            GnssY => self.config.uncertainty.gnss_x,
-            GnssZ => self.config.uncertainty.gnss_x,
+            GnssY => self.config.uncertainty.gnss_y,
+            GnssZ => self.config.uncertainty.gnss_z,
             Roll => self.config.uncertainty.roll,
             Pitch => self.config.uncertainty.pitch,
             Yaw => self.config.uncertainty.yaw,
@@ -941,6 +941,7 @@ mod tests {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let _uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
+        assert!(false);
     }
 
     #[test]
