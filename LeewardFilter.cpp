@@ -69,5 +69,5 @@ namespace pdal
             }
         }
         leeward_free(leeward);
-    } // namespace pdal
+    }
 } // namespace pdal
