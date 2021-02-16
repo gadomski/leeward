@@ -832,7 +832,7 @@ impl<L: Lasish> Measurement<L> {
         );
         let body_frame = self.body_frame();
         let normal = body_frame - body_normal_endpoint;
-        normal.dot(&body_frame) / (normal.norm() * body_frame.norm())
+        (normal.dot(&body_frame) / (normal.norm() * body_frame.norm())).acos()
     }
 
     fn uncertainty_covariance(&self, incidence_angle: f64) -> MatrixN<f64, U14> {
