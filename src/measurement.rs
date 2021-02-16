@@ -830,9 +830,9 @@ impl<L: Lasish> Measurement<L> {
             self.rpy(),
             self.utm_zone(),
         );
-        let vector = self.body_frame() - body_normal_endpoint;
-        let unit_vector = vector / vector.norm();
-        (unit_vector.dot(&normal) / (unit_vector.norm() * normal.norm())).acos()
+        let body_frame = self.body_frame();
+        let normal = body_frame - body_normal_endpoint;
+        normal.dot(&body_frame) / (normal.norm() * body_frame.norm())
     }
 
     fn uncertainty_covariance(&self, incidence_angle: f64) -> MatrixN<f64, U14> {
@@ -941,7 +941,6 @@ mod tests {
         let measurements =
             super::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let _uncertainty = measurements[0].tpu(Point::new(0., 0., 1.)).unwrap();
-        assert!(false);
     }
 
     #[test]
