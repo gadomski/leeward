@@ -1,6 +1,4 @@
 //! Leeward's C API.
-//!
-//! Used to interaction w/ PDAL via https://github.com/gadomski/leeward-pdal.
 
 #![allow(clippy::missing_safety_doc)]
 
