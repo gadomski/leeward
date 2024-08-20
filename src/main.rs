@@ -28,32 +28,30 @@ fn main() -> Result<(), Error> {
     } else {
         Box::new(io::stdout())
     };
-    if let Some(_) = matches.subcommand_matches("adjust") {
+    if matches.subcommand_matches("adjust").is_some() {
         let adjust = Adjust::new(measurements)?.adjust()?;
         writeln!(write, "{}", toml::to_string_pretty(&adjust.config())?)?;
         if let Some(history) = matches.value_of("history") {
-            let mut writer = File::create(history).map(|f| Writer::from_writer(f))?;
+            let mut writer = File::create(history).map(Writer::from_writer)?;
             for (iteration, record) in adjust.history().iter().enumerate() {
                 writer.serialize(Record::new(iteration, record))?;
             }
         }
-    } else if let Some(_) = matches.subcommand_matches("body-frame") {
+    } else if matches.subcommand_matches("body-frame").is_some() {
         let mut writer = Writer::from_writer(write);
         for result in measurements.into_iter().map(|m| BodyFrame::new(&m)) {
             let body_frame = result?;
             writer.serialize(body_frame)?;
         }
-    } else if let Some(_) = matches.subcommand_matches("best-fit-plane") {
+    } else if matches.subcommand_matches("best-fit-plane").is_some() {
         let mut writer = Writer::from_writer(write);
         for point in utils::fit_to_plane_in_body_frame(&measurements) {
             writer.serialize(point)?;
         }
-    } else if let Some(_) = matches.subcommand_matches("tpu") {
+    } else if matches.subcommand_matches("tpu").is_some() {
         let mut writer = Writer::from_writer(write);
-        for tpu in measurements.into_iter().map(Tpu::new) {
-            if let Ok(tpu) = tpu {
-                writer.serialize(tpu)?;
-            }
+        for tpu in measurements.into_iter().flat_map(Tpu::new) {
+            writer.serialize(tpu)?;
         }
     }
     Ok(())

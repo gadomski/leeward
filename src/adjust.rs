@@ -130,7 +130,7 @@ impl<L: Lasish> Adjust<L> {
         history.push(Record {
             rmse,
             variables: variables.clone(),
-            values: values.iter().map(|&v| v).collect(),
+            values: values.iter().copied().collect(),
             config,
         });
         Ok(Adjust {
@@ -250,7 +250,7 @@ mod tests {
         let mut measurements =
             crate::measurements("data/sbet.out", "data/points.las", "data/config.toml").unwrap();
         let mut new_config = measurements[0].config();
-        new_config.lever_arm.x = new_config.lever_arm.x + 1.;
+        new_config.lever_arm.x += 1.;
         measurements[0] = measurements[0].with_config(new_config);
         assert!(Adjust::new(measurements).is_err());
     }

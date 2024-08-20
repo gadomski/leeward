@@ -88,7 +88,7 @@ impl Config {
     /// assert_eq!(0.2, config.boresight.pitch);
     /// ```
     pub fn with_values(&self, variables: &[Variable], values: &[f64]) -> Result<Config, Error> {
-        let mut config = self.clone();
+        let mut config = *self;
         for (variable, value) in variables.iter().zip(values) {
             let target = match variable {
                 Variable::BoresightRoll => &mut config.boresight.roll,

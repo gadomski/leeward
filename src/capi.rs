@@ -2,6 +2,8 @@
 //!
 //! Used to interaction w/ PDAL via https://github.com/gadomski/leeward-pdal.
 
+#![allow(clippy::missing_safety_doc)]
+
 use crate::{Config, Lasish, Measurement, Point, Trajectory};
 use anyhow::Error;
 use libc::c_char;
@@ -16,12 +18,14 @@ use std::{ffi::CStr, ptr};
 /// # use std::ffi::CString;
 /// let sbet = CString::new("data/sbet.out").unwrap();
 /// let config = CString::new("data/config.toml").unwrap();
-/// let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
-/// assert!(!leeward.is_null());
-/// capi::leeward_free(leeward);
+/// unsafe {
+///     let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
+///     assert!(!leeward.is_null());
+///     capi::leeward_free(leeward);
+/// }
 /// ```
 #[no_mangle]
-pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mut Leeward {
+pub unsafe extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mut Leeward {
     let config = unsafe { CStr::from_ptr(config) }.to_string_lossy();
     let config = match Config::from_path(&*config) {
         Ok(config) => config,
@@ -57,6 +61,7 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 /// # use std::ffi::CString;
 /// let sbet = CString::new("data/sbet.out").unwrap();
 /// let config = CString::new("data/config.toml").unwrap();
+/// unsafe {
 /// let leeward = capi::leeward_new(sbet.as_ptr(), config.as_ptr());
 /// let point = capi::LeewardPoint {
 ///     x: 320000.34,
@@ -74,9 +79,10 @@ pub extern "C" fn leeward_new(sbet: *const c_char, config: *const c_char) -> *mu
 /// assert!(!measurement.is_null());
 /// capi::leeward_measurement_free(measurement);
 /// capi::leeward_free(leeward);
+/// }
 /// ```
 #[no_mangle]
-pub extern "C" fn leeward_measurement(
+pub unsafe extern "C" fn leeward_measurement(
     leeward: *mut Leeward,
     point: LeewardPoint,
     normal: LeewardNormal,
@@ -104,7 +110,7 @@ pub extern "C" fn leeward_measurement(
 
 /// Free an allocated `LeewardMeasurement` structure.
 #[no_mangle]
-pub extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement) {
+pub unsafe extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement) {
     if measurement.is_null() {
         // pass
     } else {
@@ -114,7 +120,7 @@ pub extern "C" fn leeward_measurement_free(measurement: *mut LeewardMeasurement)
 
 /// Free an allocated `Leeward` structure.
 #[no_mangle]
-pub extern "C" fn leeward_free(leeward: *mut Leeward) {
+pub unsafe extern "C" fn leeward_free(leeward: *mut Leeward) {
     if leeward.is_null() {
         // pass
     } else {
@@ -223,16 +229,18 @@ mod tests {
     fn new() {
         let sbet = CString::new("data/sbet.out").unwrap();
         let config = CString::new("data/config.toml").unwrap();
-        let leeward = super::leeward_new(sbet.as_ptr(), config.as_ptr());
-        assert!(!leeward.is_null());
-        super::leeward_free(leeward);
+        unsafe {
+            let leeward = super::leeward_new(sbet.as_ptr(), config.as_ptr());
+            assert!(!leeward.is_null());
+            super::leeward_free(leeward);
+        }
     }
 
     #[test]
     fn measurement() {
         let sbet = CString::new("data/sbet.out").unwrap();
         let config = CString::new("data/config.toml").unwrap();
-        let leeward = super::leeward_new(sbet.as_ptr(), config.as_ptr());
+        let leeward = unsafe { super::leeward_new(sbet.as_ptr(), config.as_ptr()) };
         let point = super::LeewardPoint {
             x: 320000.34,
             y: 4181319.35,
@@ -245,9 +253,11 @@ mod tests {
             y: 0.,
             z: 0.,
         };
-        let measurement = super::leeward_measurement(leeward, point, normal);
-        assert!(!measurement.is_null());
-        super::leeward_measurement_free(measurement);
-        super::leeward_free(leeward);
+        unsafe {
+            let measurement = super::leeward_measurement(leeward, point, normal);
+            assert!(!measurement.is_null());
+            super::leeward_measurement_free(measurement);
+            super::leeward_free(leeward);
+        }
     }
 }

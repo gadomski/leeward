@@ -159,7 +159,7 @@ impl Iterator for VariableIter {
         if variable.is_some() {
             self.index += 1;
         }
-        variable.map(|v| *v)
+        variable.copied()
     }
 }
 
