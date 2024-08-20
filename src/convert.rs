@@ -128,6 +128,7 @@ pub struct Ellipsoid {
     a: f64,
     a2: f64,
     f: f64,
+    #[allow(dead_code)]
     b: f64,
     b2: f64,
 }
