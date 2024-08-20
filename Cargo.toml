@@ -14,7 +14,7 @@ csv = "1.1"
 las = "0.8"
 libc = "0.2"
 nalgebra = { version = "0.33", features = ["serde-serialize"] }
-sbet = { git = "https://github.com/gadomski/sbet-rs" }
+sbet = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 
