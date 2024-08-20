@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+set -e
+
+root=$(dirname $(dirname $(realpath $0)))
+
+PDAL_DRIVER_PATH="$root/build" pdal $@

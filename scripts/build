@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+set -e
+
+root=$(dirname $(dirname $(realpath $0)))
+profile=debug
+target="$root/target/$profile"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    library_suffix=dylib
+else
+    library_suffix=so
+fi
+
+cargo build
+cmake -S pdal -B build -DLeeward_INCLUDE_DIR=$target -DLeeward_LIBRARY=$target/libleeward.$library_suffix
+make -C build

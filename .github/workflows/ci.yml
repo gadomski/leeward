@@ -37,3 +37,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
         run: cargo clippy
+  pdal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          channels: conda-forge
+      - uses: Swatinem/rust-cache@v2
+      - name: Install PDAL
+        run: conda install -y pdal
+      - name: Build PDAL plugin
+        run: scripts/build
+      - name: Check PDAL drivers
+        run: scripts/pdal --drivers | grep filters.leeward
