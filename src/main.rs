@@ -1,57 +1,91 @@
 use anyhow::Error;
-use clap::{load_yaml, App, AppSettings};
+use clap::{Parser, Subcommand};
 use csv::Writer;
 use leeward::{utils, Adjust, Config, Lasish, Measurement, Point};
 use serde::Serialize;
-use std::{
-    fs::File,
-    io::{self, Write},
-};
+use std::{fs::File, io::Write, path::PathBuf};
+
+#[derive(Debug, Parser)]
+struct Args {
+    /// The SBET file
+    sbet: PathBuf,
+
+    /// The LAS file holding the points
+    las: PathBuf,
+
+    /// The config TOML file
+    config: PathBuf,
+
+    /// The amount to decimate the incoming points
+    #[arg(short, long, default_value = "1")]
+    decimation: usize,
+
+    /// The output file.
+    ///
+    /// If not provided, the output will be printed to standard output.
+    #[arg(short, long)]
+    outfile: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Computes the boresight adjustment.
+    Adjust {
+        /// The file to write the history information.
+        history: Option<PathBuf>,
+    },
+
+    /// Computes the best fit plane for the points in the body frame of the platform
+    BestFitPlane,
+
+    /// Computes the points in the body frame of the aircraft
+    BodyFrame,
+
+    /// Computes total propagated uncertainty
+    Tpu,
+}
 
 fn main() -> Result<(), Error> {
-    let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml)
-        .setting(AppSettings::DisableHelpSubcommand)
-        .get_matches();
-    let measurements = leeward::decimated_measurements(
-        matches.value_of("SBET").unwrap(),
-        matches.value_of("LAS").unwrap(),
-        matches.value_of("CONFIG").unwrap(),
-        matches
-            .value_of("decimation")
-            .map(|v| v.parse())
-            .transpose()?
-            .unwrap_or(1),
-    )?;
-    let mut write: Box<dyn Write> = if let Some(outfile) = matches.value_of("outfile") {
+    let args = Args::parse();
+    let measurements =
+        leeward::decimated_measurements(args.sbet, args.las, args.config, args.decimation)?;
+    let mut write: Box<dyn Write> = if let Some(outfile) = args.outfile {
         Box::new(File::create(outfile)?)
     } else {
-        Box::new(io::stdout())
+        Box::new(std::io::stdout())
     };
-    if matches.subcommand_matches("adjust").is_some() {
-        let adjust = Adjust::new(measurements)?.adjust()?;
-        writeln!(write, "{}", toml::to_string_pretty(&adjust.config())?)?;
-        if let Some(history) = matches.value_of("history") {
-            let mut writer = File::create(history).map(Writer::from_writer)?;
-            for (iteration, record) in adjust.history().iter().enumerate() {
-                writer.serialize(Record::new(iteration, record))?;
+    match args.command {
+        Command::Adjust { history } => {
+            let adjust = Adjust::new(measurements)?.adjust()?;
+            writeln!(write, "{}", toml::to_string_pretty(&adjust.config())?)?;
+            if let Some(history) = history {
+                let mut writer = File::create(history).map(Writer::from_writer)?;
+                for (iteration, record) in adjust.history().iter().enumerate() {
+                    writer.serialize(Record::new(iteration, record))?;
+                }
             }
         }
-    } else if matches.subcommand_matches("body-frame").is_some() {
-        let mut writer = Writer::from_writer(write);
-        for result in measurements.into_iter().map(|m| BodyFrame::new(&m)) {
-            let body_frame = result?;
-            writer.serialize(body_frame)?;
+        Command::BestFitPlane {} => {
+            let mut writer = Writer::from_writer(write);
+            for result in measurements.into_iter().map(|m| BodyFrame::new(&m)) {
+                let body_frame = result?;
+                writer.serialize(body_frame)?;
+            }
         }
-    } else if matches.subcommand_matches("best-fit-plane").is_some() {
-        let mut writer = Writer::from_writer(write);
-        for point in utils::fit_to_plane_in_body_frame(&measurements) {
-            writer.serialize(point)?;
+        Command::BodyFrame {} => {
+            let mut writer = Writer::from_writer(write);
+            for point in utils::fit_to_plane_in_body_frame(&measurements) {
+                writer.serialize(point)?;
+            }
         }
-    } else if matches.subcommand_matches("tpu").is_some() {
-        let mut writer = Writer::from_writer(write);
-        for tpu in measurements.into_iter().flat_map(Tpu::new) {
-            writer.serialize(tpu)?;
+        Command::Tpu {} => {
+            let mut writer = Writer::from_writer(write);
+            for tpu in measurements.into_iter().flat_map(Tpu::new) {
+                writer.serialize(tpu)?;
+            }
         }
     }
     Ok(())
