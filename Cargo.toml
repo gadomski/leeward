@@ -7,9 +7,12 @@ edition = "2018"
 [lib]
 crate-type = ["lib", "staticlib"]
 
+[features]
+cli = ["dep:clap"]
+
 [dependencies]
 anyhow = "1.0"
-clap = { version = "2.33", features = ["yaml"] }
+clap = { version = "2.33", features = ["yaml"], optional = true }
 csv = "1.1"
 las = "0.8"
 libc = "0.2"
@@ -26,5 +29,6 @@ cbindgen = "0.27"
 
 [[bin]]
 name = "leeward"
+required-features = ["cli"]
 test = false
 doc = false
