@@ -23,3 +23,8 @@ approx = "0.4"
 
 [build-dependencies]
 cbindgen = "0.27"
+
+[[bin]]
+name = "leeward"
+test = false
+doc = false
