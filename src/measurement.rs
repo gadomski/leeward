@@ -1,6 +1,6 @@
 use crate::{convert, Config, Dimension, Matrix3, Point, RollPitchYaw, Trajectory, Variable};
 use anyhow::{anyhow, Error};
-use nalgebra::{MatrixMN, MatrixN, U14, U3};
+use nalgebra::SMatrix;
 use std::path::Path;
 
 /// Reads in a vector of measurements from files.
@@ -614,8 +614,8 @@ impl<L: Lasish> Measurement<L> {
         })
     }
 
-    fn jacobian(&self) -> MatrixMN<f64, U14, U3> {
-        let mut jacobian = MatrixMN::<f64, U14, U3>::zeros();
+    fn jacobian(&self) -> SMatrix<f64, 14, 3> {
+        let mut jacobian = SMatrix::zeros();
         for (row, variable) in Variable::iter().enumerate() {
             for (col, dimension) in Dimension::iter().enumerate() {
                 jacobian[(row, col)] = self.partial_derivative(variable, dimension);
@@ -835,8 +835,8 @@ impl<L: Lasish> Measurement<L> {
         (normal.dot(&body_frame) / (normal.norm() * body_frame.norm())).acos()
     }
 
-    fn uncertainty_covariance(&self, incidence_angle: f64) -> MatrixN<f64, U14> {
-        let mut matrix = MatrixN::<f64, U14>::zeros();
+    fn uncertainty_covariance(&self, incidence_angle: f64) -> SMatrix<f64, 14, 14> {
+        let mut matrix = SMatrix::<f64, 14, 14>::zeros();
         for (i, variable) in Variable::iter().enumerate() {
             matrix[(i, i)] = self.uncertainty(variable, incidence_angle).powi(2);
         }

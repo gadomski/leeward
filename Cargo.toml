@@ -13,13 +13,13 @@ clap = { version = "2.33", features = ["yaml"] }
 csv = "1.1"
 las = "0.8"
 libc = "0.2"
-nalgebra = { version = "0.24", features = ["serde-serialize"] }
+nalgebra = { version = "0.33", features = ["serde-serialize"] }
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 
 [dev-dependencies]
-approx = "0.4"
+approx = "0.5"
 
 [build-dependencies]
 cbindgen = "0.27"

@@ -1,7 +1,7 @@
 //! Utility functions.
 
 use crate::{Lasish, Matrix3, Measurement, Point};
-use nalgebra::{Dynamic, MatrixMN, U3};
+use nalgebra::{Dyn, OMatrix, U3};
 
 /// Fits a bunch of measurements to a plane in the platform's body frame.
 ///
@@ -16,7 +16,7 @@ use nalgebra::{Dynamic, MatrixMN, U3};
 /// assert_eq!(measurements.len(), points.len());
 /// ```
 pub fn fit_to_plane_in_body_frame<L: Lasish>(measurements: &[Measurement<L>]) -> Vec<Point> {
-    let mut points = MatrixMN::<f64, Dynamic, U3>::zeros(measurements.len());
+    let mut points = OMatrix::<f64, Dyn, U3>::zeros(measurements.len());
     for (i, measurement) in measurements.iter().enumerate() {
         let body_frame = measurement.body_frame();
         points[(i, 0)] = body_frame.x;
