@@ -566,7 +566,7 @@ impl<L: Lasish> Measurement<L> {
         Measurement {
             las: self.las.clone(),
             sbet: self.sbet,
-            config: config,
+            config,
             use_las_scan_angle: self.use_las_scan_angle,
         }
     }
