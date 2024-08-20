@@ -5,7 +5,7 @@ authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 edition = "2018"
 
 [features]
-workaround_rls_vscode_bug_586 = [] 
+workaround_rls_vscode_bug_586 = []
 
 [lib]
 crate-type = ["lib", "staticlib"]
@@ -14,15 +14,15 @@ crate-type = ["lib", "staticlib"]
 anyhow = "1.0"
 clap = { version = "2.33", features = ["yaml"] }
 csv = "1.1"
-las = "0.7"
+las = "0.8"
 libc = "0.2"
 nalgebra = { version = "0.24", features = ["serde-serialize"] }
 sbet = { git = "https://github.com/gadomski/sbet-rs" }
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.5"
+toml = "0.8"
 
 [dev-dependencies]
 approx = "0.4"
 
 [build-dependencies]
-cbindgen = "0.17"
+cbindgen = "0.27"
